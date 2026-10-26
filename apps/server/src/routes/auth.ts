@@ -25,14 +25,14 @@ authRouter.post('/register', async (req, res) => {
       return res.status(400).json({ error: 'weak_password' });
     }
 
-    const existing = await query('SELECT id FROM mongbori.users WHERE email = $1', [email]);
+    const existing = await query('SELECT id FROM game_climb.users WHERE email = $1', [email]);
     if (existing.rowCount && existing.rowCount > 0) {
       return res.status(409).json({ error: 'email_exists' });
     }
 
     const passwordHash = await hashPassword(password);
     const created = await query(
-      `INSERT INTO mongbori.users (email, password_hash, display_name)
+      `INSERT INTO game_climb.users (email, password_hash, display_name)
        VALUES ($1, $2, $3)
        RETURNING ${baseUserSelect}`,
       [email, passwordHash, displayName]
@@ -60,7 +60,7 @@ authRouter.post('/login', async (req, res) => {
 
     const result = await query(
       `SELECT ${baseUserSelect}, password_hash as "passwordHash"
-       FROM mongbori.users WHERE email = $1`,
+       FROM game_climb.users WHERE email = $1`,
       [email]
     );
 
@@ -93,7 +93,7 @@ authRouter.post('/login', async (req, res) => {
 
     if (!looksBcrypt) {
       const newHash = await hashPassword(password);
-      await query('UPDATE mongbori.users SET password_hash = $1 WHERE id = $2', [newHash, user.id]);
+      await query('UPDATE game_climb.users SET password_hash = $1 WHERE id = $2', [newHash, user.id]);
     }
 
     const token = signToken({ userId: user.id, email: user.email });
@@ -109,7 +109,7 @@ authRouter.get('/me', requireAuth, async (req: AuthRequest, res) => {
     const userId = req.user?.id;
     const result = await query(
       `SELECT ${baseUserSelect}
-       FROM mongbori.users WHERE id = $1`,
+       FROM game_climb.users WHERE id = $1`,
       [userId]
     );
     return res.json({ user: result.rows[0] });

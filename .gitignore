@@ -5,3 +5,9 @@ dist
 .DS_Store
 .vscode
 .idea
+
+# 로그 파일
+*.log
+
+# 런타임 산출물
+.api.pid

@@ -19,12 +19,16 @@ const isPortOpen = (port: number) => {
   });
 };
 
+// TO-BE: 네이티브 실행 (Docker 미사용). AS-IS(4080/5174) 와 겹치지 않는 포트를 쓴다 (규칙: Gateway/nginx/conf/conf.d/00-default.conf).
+const API_PORT = Number(process.env.CLIMB_API_PORT || 18201);
+const DEV_PORT = Number(process.env.CLIMB_WEB_PORT || 28201);
+
 export default defineConfig({
   plugins: [
     {
       name: 'start-backend',
       configureServer() {
-        const port = 4080;
+        const port = API_PORT;
         isPortOpen(port).then((open) => {
           if (open) return;
           const backendCwd = path.resolve(__dirname, '../server');
@@ -40,10 +44,11 @@ export default defineConfig({
   ],
   server: {
     host: "0.0.0.0",
-    port: 5174,
+    port: DEV_PORT,
+    strictPort: true,
     proxy: {
       '/api': {
-        target: 'http://localhost:4080',
+        target: `http://127.0.0.1:${API_PORT}`,
         changeOrigin: true
       }
     }

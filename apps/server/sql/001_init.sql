@@ -1,9 +1,9 @@
 CREATE EXTENSION IF NOT EXISTS "pgcrypto";
 CREATE EXTENSION IF NOT EXISTS "citext";
 
-CREATE SCHEMA IF NOT EXISTS mongbori;
+CREATE SCHEMA IF NOT EXISTS game_climb;
 
-CREATE TABLE IF NOT EXISTS mongbori.users (
+CREATE TABLE IF NOT EXISTS game_climb.users (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   email CITEXT UNIQUE NOT NULL,
   password_hash TEXT NOT NULL,
@@ -11,9 +11,9 @@ CREATE TABLE IF NOT EXISTS mongbori.users (
   created_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 
-CREATE TABLE IF NOT EXISTS mongbori.runs (
+CREATE TABLE IF NOT EXISTS game_climb.runs (
   id BIGSERIAL PRIMARY KEY,
-  user_id UUID NOT NULL REFERENCES mongbori.users(id) ON DELETE CASCADE,
+  user_id UUID NOT NULL REFERENCES game_climb.users(id) ON DELETE CASCADE,
   difficulty TEXT NOT NULL,
   score INTEGER NOT NULL,
   height INTEGER NOT NULL,
@@ -23,4 +23,4 @@ CREATE TABLE IF NOT EXISTS mongbori.runs (
 );
 
 CREATE INDEX IF NOT EXISTS runs_leaderboard_idx
-  ON mongbori.runs (difficulty, score DESC, height DESC, created_at DESC);
+  ON game_climb.runs (difficulty, score DESC, height DESC, created_at DESC);

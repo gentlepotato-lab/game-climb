@@ -26,8 +26,8 @@ leaderboardRouter.get('/', async (req, res) => {
   const result = await query(
     `SELECT r.id, r.difficulty, r.score, r.height, r.duration_ms as "durationMs", r.obstacles_avoided as "obstaclesAvoided",
             r.created_at as "createdAt", u.display_name as "displayName"
-     FROM mongbori.runs r
-     JOIN mongbori.users u ON r.user_id = u.id
+     FROM game_climb.runs r
+     JOIN game_climb.users u ON r.user_id = u.id
      WHERE r.difficulty = $1
        AND r.created_at >= $2
      ORDER BY r.score DESC, r.height DESC, r.created_at DESC

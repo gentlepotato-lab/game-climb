@@ -18,7 +18,7 @@ runsRouter.post('/', requireAuth, async (req: AuthRequest, res) => {
   const obstaclesAvoided = Math.max(0, Number(req.body.obstaclesAvoided ?? req.body.obstacles_avoided ?? 0));
 
   const inserted = await query(
-    `INSERT INTO mongbori.runs (user_id, difficulty, score, height, duration_ms, obstacles_avoided)
+    `INSERT INTO game_climb.runs (user_id, difficulty, score, height, duration_ms, obstacles_avoided)
      VALUES ($1, $2, $3, $4, $5, $6)
      RETURNING id, difficulty, score, height, duration_ms as "durationMs", obstacles_avoided as "obstaclesAvoided", created_at as "createdAt"`,
     [req.user?.id, difficulty, score, height, durationMs, obstaclesAvoided]
@@ -30,7 +30,7 @@ runsRouter.post('/', requireAuth, async (req: AuthRequest, res) => {
 runsRouter.get('/mine', requireAuth, async (req: AuthRequest, res) => {
   const result = await query(
     `SELECT id, difficulty, score, height, duration_ms as "durationMs", obstacles_avoided as "obstaclesAvoided", created_at as "createdAt"
-     FROM mongbori.runs
+     FROM game_climb.runs
      WHERE user_id = $1
      ORDER BY created_at DESC
      LIMIT 20`,
