@@ -1,7 +1,7 @@
 # CLAUDE.md
 
 `game-climb` 작업 시 지켜야 할 규칙. 응답, Git, 문서 작성 규칙은 `life-expense`와 같고,
-그 아래는 이 저장소의 구조(Express, Phaser, `gp-lab`/`game_climb`)에 맞게 적은 것.
+그 아래는 이 저장소의 구조(Express, SVG 게임 화면, `gp-lab`/`game_climb`)에 맞게 적은 것.
 
 ---
 
@@ -86,10 +86,11 @@
 | 항목 | 값 |
 |---|---|
 | 백엔드 | Express 4, `pg`, `tsx watch` `:18201` |
-| 프론트 | Phaser 3, Vite 5, TS 5, 갈무리 글꼴. 프레임워크 없이 패널 셋을 `main.ts`가 넘긴다. |
+| 프론트 | Vite 5, TS 5. 게임 엔진 없이 SVG와 CSS 애니메이션으로 그리고 `requestAnimationFrame`으로 돌린다. 프레임워크 없이 패널 둘을 `main.ts`가 넘긴다. |
 | DB | PostgreSQL 17, DB `gp-lab`, 스키마 **`game_climb`** |
 | 개발 서버 | Vite `:28201` → 백엔드 `127.0.0.1:18201` 프록시. 백엔드가 꺼져 있으면 같이 띄운다. |
-| 실서비스 | 게이트웨이 Nginx가 `frontend/dist`를 **직접** 서빙(`:8201`, `climb.game.localhost`) |
+| 실서비스 | 게이트웨이 Nginx가 `frontend/dist`를 **직접** 서빙(`:8201`, https `:9201`, `climb.game.localhost`) |
+| 웹 앱 | `public/manifest.json`과 아이콘. 설치하려면 https(또는 `localhost`)여야 한다. |
 | 로그인 | 없다. 기록은 닉네임만 받아 저장한다(2026-10-27에 걷어냈다). |
 
 ### 경로 규칙
@@ -144,7 +145,7 @@
 
 ---
 
-## 프론트엔드(Phaser + TS + Vite)
+## 프론트엔드(TS + Vite + SVG)
 
 ### 타입
 
@@ -159,10 +160,22 @@
 
 ### 화면
 
-- 패널은 `index.html`의 셋(`start`, `menu`, `result`)이고 `ui/screens.ts`의 `showPanel`로만 넘긴다.
+- 패널은 `index.html`의 둘(`start`, `result`)이고 `ui/screens.ts`의 `showPanel`로만 넘긴다.
+- 게임판은 가로 360px 기준이다. 세로는 처음 연 기기의 비율로 정하고 `main.ts`가 화면에 맞춰 늘이고 줄인다.
+- 스마트폰이 기본이다. 새 화면은 폭 360px에서 먼저 맞춘다.
 - **남이 적은 글(닉네임)은 `innerHTML`에 넣지 않는다.** `textContent`로 넣는다.
   로그인이 없어서 누구나 랭킹에 글을 올릴 수 있다.
 - 레이아웃, 버튼 순서, 여백은 명시적 요청 없이 바꾸지 않는다.
+
+### 그림
+
+- 그림은 디자인 캔버스의 시안(몽보리 클라임 시안)에서 왔다. 새, 해바라기씨, 먼지, 깃털, 앱 로고는
+  `src/art/defs.ts`의 symbol이고, 화면은 `<use>`로 쓴다. 그림을 고칠 때는 시안과 함께 고친다.
+- symbol을 `<use>`할 때는 `width`와 `height`를 symbol의 viewBox 크기로 꼭 준다. 빠뜨리면 바깥 svg 크기에
+  맞춰 줄어들어 그림이 한쪽으로 쏠린다.
+- 표정, 방향, 효과는 새 svg의 `data-face`, `data-view`, `data-fx`로 갈아 끼운다. 표정 그림을 늘리면
+  `styles.css`의 짝도 같이 늘린다.
+- 깜박임은 감은 눈 그림으로 갈아 끼운다. 눈을 납작하게 누르면 보리의 붉은 눈동자가 점처럼 남는다.
 
 ### 의존성
 
@@ -171,9 +184,10 @@
 ### 파일 배치
 
 ```
-src/main.ts           패널 흐름, 결과 처리
+src/main.ts           패널 흐름, 게임판 크기 맞추기, 결과 처리
 src/ui/               패널별 코드(start.ts)와 패널 전환(screens.ts)
-src/game/             Phaser 장면, 오브젝트, 난이도
+src/game/             game.ts(게임 돌리기), characters.ts(능력치), systems/Difficulty.ts(난이도)
+src/art/              defs.ts(그림 조각), bird.ts(새 조립), scene.ts(창밖과 블라인드)
 src/api/client.ts     /api 요청
 src/styles.css        전역 스타일
 ```

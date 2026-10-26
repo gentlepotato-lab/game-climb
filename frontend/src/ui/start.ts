@@ -1,31 +1,75 @@
+import { posingBird } from '../art/bird';
+import { CHARACTERS } from '../game/characters';
+import type { CharacterKey, DifficultyKey } from '../game/types';
 import { showPanel } from './screens';
 
-// 닉네임은 이 브라우저에만 남긴다. 다음에 들어오면 칸이 채워져 있다.
+// 닉네임과 마지막으로 고른 친구, 난이도는 이 브라우저에만 남긴다. 다음에 들어오면 그대로 골라져 있다.
 const STORAGE_KEY = 'climb_display_name';
+const CHARACTER_KEY = 'climb_character';
+const DIFFICULTY_KEY = 'climb_difficulty';
 
-export const loadDisplayName = () => {
+const load = (key: string) => {
   try {
-    return localStorage.getItem(STORAGE_KEY) ?? '';
+    return localStorage.getItem(key) ?? '';
   } catch (_error) {
     return '';
   }
 };
 
-const saveDisplayName = (displayName: string) => {
+const save = (key: string, value: string) => {
   try {
-    localStorage.setItem(STORAGE_KEY, displayName);
+    localStorage.setItem(key, value);
   } catch (_error) {
     // 저장이 막힌 브라우저여도 이번 판은 그대로 한다.
   }
 };
 
-export const initStart = (onStart: (displayName: string) => void) => {
+export type StartChoice = {
+  character: CharacterKey;
+  difficulty: DifficultyKey;
+  displayName: string;
+};
+
+export const initStart = (onStart: (choice: StartChoice) => void) => {
   const startForm = document.getElementById('start-form') as HTMLFormElement | null;
   const input = startForm?.elements.namedItem('displayName') as HTMLInputElement | null;
+  const startButton = document.getElementById('start-button');
+  const cards = Array.from(document.querySelectorAll<HTMLButtonElement>('.card[data-character]'));
+  const pills = Array.from(document.querySelectorAll<HTMLButtonElement>('.pill[data-difficulty]'));
 
-  if (input) {
-    input.value = loadDisplayName();
-  }
+  let character: CharacterKey = load(CHARACTER_KEY) === 'bori' ? 'bori' : 'mongle';
+  const savedDifficulty = load(DIFFICULTY_KEY);
+  let difficulty: DifficultyKey = savedDifficulty === 'normal' || savedDifficulty === 'hard' ? savedDifficulty : 'easy';
+
+  cards.forEach((card) => {
+    const key = card.dataset.character as CharacterKey;
+    const portrait = card.querySelector('.portrait');
+    if (portrait) portrait.innerHTML = posingBird(CHARACTERS[key].prefix);
+  });
+
+  const paint = () => {
+    cards.forEach((card) => card.setAttribute('aria-pressed', String(card.dataset.character === character)));
+    pills.forEach((pill) => pill.setAttribute('aria-pressed', String(pill.dataset.difficulty === difficulty)));
+    if (startButton) startButton.textContent = `${CHARACTERS[character].name}와 시작`;
+  };
+
+  cards.forEach((card) => {
+    card.addEventListener('click', () => {
+      character = card.dataset.character as CharacterKey;
+      save(CHARACTER_KEY, character);
+      paint();
+    });
+  });
+  pills.forEach((pill) => {
+    pill.addEventListener('click', () => {
+      difficulty = pill.dataset.difficulty as DifficultyKey;
+      save(DIFFICULTY_KEY, difficulty);
+      paint();
+    });
+  });
+
+  if (input) input.value = load(STORAGE_KEY);
+  paint();
 
   startForm?.addEventListener('submit', (event) => {
     event.preventDefault();
@@ -34,8 +78,8 @@ export const initStart = (onStart: (displayName: string) => void) => {
       input?.focus();
       return;
     }
-    saveDisplayName(displayName);
-    onStart(displayName);
-    showPanel('menu');
+    save(STORAGE_KEY, displayName);
+    onStart({ character, difficulty, displayName });
+    showPanel(null);
   });
 };

@@ -7,10 +7,6 @@
     "build": "tsc -b && vite build",
     "preview": "vite preview"
   },
-  "dependencies": {
-    "galmuri": "^2.40.3",
-    "phaser": "^3.80.1"
-  },
   "devDependencies": {
     "typescript": "^5.5.4",
     "vite": "^5.4.2"

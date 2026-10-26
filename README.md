@@ -1,6 +1,7 @@
 # game-climb
 
-- 몽보리 클라임(MongBori Climb). 노란 모란앵무새가 커튼 줄을 타고 오르는 도트 게임
+- 몽보리 클라임(MongBori Climb). 몽글이와 보리를 기억하며 만든, 버티컬 블라인드의 구슬 체인을 타고 오르는 모바일 게임
+- 스마트폰이 기본이고 PC 브라우저에서도 할 수 있다. 홈 화면에 웹 앱으로 설치할 수 있다.
 - GP Lab의 `game` 네임스페이스 서비스
 - 배포 위치: `Desktop\Lab\game\climb`
 
@@ -8,7 +9,7 @@
 
 | 계층 | 기술 |
 |---|---|
-| 프론트 | Phaser 3, Vite 5, TypeScript 5, 갈무리 글꼴 |
+| 프론트 | TypeScript 5, Vite 5, SVG와 CSS 애니메이션(게임 엔진 없음), Gowun Batang와 Gowun Dodum(Google Fonts) |
 | 백엔드 | Express 4, `pg`, `tsx` |
 | DB | PostgreSQL 17, DB `gp-lab`, 스키마 `game_climb` |
 
@@ -25,10 +26,12 @@
 │   │   └── routes/runs.ts   기록 저장, 이번 주 랭킹
 │   └── sql/                 001_init.sql과 날짜 붙은 마이그레이션
 ├── frontend/
-│   ├── index.html           패널 셋(시작, 난이도 선택, 결과)
-│   ├── src/main.ts          패널 흐름과 결과 처리
-│   ├── src/ui/              start.ts(닉네임), screens.ts(패널 전환)
-│   ├── src/game/            Phaser 장면과 오브젝트
+│   ├── index.html           패널 둘(고르기, 결과), manifest와 아이콘 연결
+│   ├── public/              manifest.json, 앱 아이콘(logo-mark.svg와 PNG 다섯 장)
+│   ├── src/main.ts          패널 흐름, 게임판 크기 맞추기, 결과 처리
+│   ├── src/ui/              start.ts(친구, 닉네임, 난이도 고르기), screens.ts(패널 전환)
+│   ├── src/game/            game.ts(줄 흔들기, 떨어지는 것, 표정), characters.ts(둘의 능력치)
+│   ├── src/art/             defs.ts(그림 조각), bird.ts(새 조립), scene.ts(창밖과 블라인드)
 │   ├── src/api/client.ts    /api 요청
 │   └── vite.config.ts       base '/', 개발 프록시(/api 한 줄), 백엔드 자동 기동
 └── lab.ps1                  실행 스크립트
@@ -39,6 +42,7 @@
 | 계층 | 포트 | 비고 |
 |---|---|---|
 | 엣지 | `8201` | 게이트웨이가 리스닝 |
+| TLS 엣지 | `9201` | 같은 화면의 https. 인증서는 `life/expense`와 같은 `gp-lab.crt` |
 | 내부 API | `18201` | Express |
 | 개발 서버 | `28201` | Vite dev |
 
@@ -66,6 +70,7 @@
 | PC, 호스트명 | http://climb.game.localhost/ |
 | PC, 엣지 포트 | http://localhost:8201/ |
 | LAN, 폰 | http://192.168.45.8:8201/ |
+| LAN, 폰(https) | https://192.168.45.8:9201/ |
 | 개발 서버 | http://localhost:28201/ |
 
 - SPA는 **루트**에 있다(`base: '/'`).
@@ -84,6 +89,38 @@
 | 기동 확인 | `/api/health` | `app.ts` |
 
 - 자리 접두사는 `app.ts` 한 곳에서만 붙인다. 라우터 파일 안에서 또 붙이지 않는다.
+
+## 게임
+
+- 새는 날지 않고 버티컬 블라인드의 구슬 체인에 매달려 오른다. 좌우로 끌면(키보드는 ←/→) 몸을 기울여 체인을 흔들고, 체인은 진자처럼 호를 그리며 먼지를 비킨다.
+- 해바라기씨를 먹으면 깃털(목숨)이 하나 늘고, 먼지에 닿으면 하나 준다. 깃털은 다섯까지다.
+- 창밖은 90초마다 아침, 낮, 오후, 저녁, 밤, 새벽으로 바뀐다(`styles.css`의 `--day`).
+- 둘의 능력치는 `src/game/characters.ts` 한 곳에 있다.
+
+| | 몽글이 | 보리 |
+|---|---|---|
+| 오르기 | 초당 3 | 초당 3.6 |
+| 처음 깃털 | 넷 | 셋 |
+| 흔들기 | 작고 정확하게 흔들리고 바로 멈춘다. | 크게 흔들리고, 엇박자로 늦게 먹히고, 지나쳤다 돌아온다. |
+| 특기(스페이스) | 쪼기: 머리 가까이 온 먼지 하나를 없앤다. 8초 | 먹보: 3초 동안 해바라기씨를 멀리서 끌어당긴다. 8초 |
+| 늘 | | 가까운 해바라기씨를 끌어당긴다. |
+
+## 웹 앱 설치
+
+https로 열어야 설치된다. 이 PC에서는 `localhost`가 안전한 출처라 http여도 된다.
+폰이나 다른 기기는 `https://192.168.45.8:9201/`로 들어오고, 그 기기에 사설 CA가 심겨 있어야 한다.
+CA를 심는 법은 `..\..\README.md` 6.2 절이다(life/expense와 같은 CA다).
+
+| 기기 | 방법 |
+|---|---|
+| 안드로이드(Chrome) | 주소창 오른쪽 ⋮ → 홈 화면에 추가 → 설치 |
+| iPad, 아이폰(Safari) | 공유 단추 → 홈 화면에 추가 → 추가 |
+| Windows, macOS(Chrome) | 주소창 오른쪽의 설치 아이콘, 또는 ⋮ → 전송, 저장, 공유 → 페이지를 앱으로 설치 |
+| Windows, macOS(Edge) | 주소창 오른쪽의 설치 아이콘, 또는 ⋯ → 앱 → 이 사이트를 앱으로 설치 |
+| macOS(Safari 17 이상) | 파일 → Dock에 추가 |
+
+- 메뉴 이름은 브라우저 판에 따라 조금 다를 수 있다.
+- 아이콘 원본은 `public/logo-mark.svg`다. PNG는 그 SVG를 크기별로 찍은 것이다(마스크용과 iOS용은 흰 바탕을 꽉 채운 판).
 
 ## 기록과 닉네임
 

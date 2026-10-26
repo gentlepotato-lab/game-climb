@@ -1,76 +1,86 @@
-﻿<!doctype html>
+<!doctype html>
 <html lang="ko">
   <head>
     <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>MongBori Climb</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, user-scalable=no" />
+    <title>몽보리 클라임</title>
+    <meta name="theme-color" content="#2d2b5c" />
+    <link rel="manifest" href="/manifest.json" />
+    <link rel="icon" href="/logo-mark.svg" type="image/svg+xml" />
+    <link rel="icon" href="/favicon-32.png" sizes="32x32" type="image/png" />
+    <link rel="apple-touch-icon" href="/logo-mark-180.png" />
+    <meta name="mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-title" content="몽보리 클라임" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Gowun+Batang:wght@400;700&family=Gowun+Dodum&display=swap" rel="stylesheet" />
   </head>
   <body>
-    <div id="app"></div>
-    <div id="overlay">
-      <section id="start-panel" class="panel">
-        <div class="panel-header">
-          <p class="eyebrow">MongBori Climb</p>
-          <h1>노란 모란앵무새의<br />버티컬 클라임</h1>
-          <p class="tagline">도트 감성 픽셀 액션. 장애물을 피할수록 더 높이 오릅니다.</p>
+    <div id="stage">
+      <section id="start-panel" class="panel start" aria-label="캐릭터 선택">
+        <div class="start-head">
+          <svg class="logo" viewBox="0 0 512 512" aria-hidden="true"><use href="#appIcon" width="512" height="512" /></svg>
+          <div>
+            <p class="eyebrow nw">몽글이와 보리를 기억하며</p>
+            <h1 class="nw">몽보리 클라임</h1>
+          </div>
         </div>
-        <form id="start-form" class="form">
-          <label>
-            <span>닉네임</span>
-            <input name="displayName" type="text" placeholder="몽보리" maxlength="20" required />
-          </label>
-          <button class="primary" type="submit">시작</button>
+        <p class="lead nw">함께 오를 친구를 골라 주세요.</p>
+        <form id="start-form" class="start-form">
+          <button type="button" class="card card-mg" data-character="mongle" aria-pressed="true">
+            <span class="portrait pose-mg"></span>
+            <span class="card-body">
+              <span class="card-title"><strong class="nw">몽글이</strong><span class="nw">차분하고 도도한 절세미인</span></span>
+              <span class="stats">
+                <span class="nw">오르기</span><span class="bar" style="--n: 3"></span>
+                <span class="nw">흔들기</span><span class="bar" style="--n: 5"></span>
+                <span class="nw">체력</span><span class="bar" style="--n: 4"></span>
+              </span>
+              <span class="card-note"><span class="nw"><b>쪼기</b> 8초마다 먼지를 쪼아 없앤다.</span><span class="nw">흔들림이 작고 오르기가 느리다.</span></span>
+            </span>
+          </button>
+          <button type="button" class="card card-bo" data-character="bori" aria-pressed="false">
+            <span class="portrait pose-bo"></span>
+            <span class="card-body">
+              <span class="card-title"><strong class="nw">보리</strong><span class="nw">엇박자 천방지축</span></span>
+              <span class="stats">
+                <span class="nw">오르기</span><span class="bar" style="--n: 5"></span>
+                <span class="nw">흔들기</span><span class="bar" style="--n: 2"></span>
+                <span class="nw">체력</span><span class="bar" style="--n: 3"></span>
+              </span>
+              <span class="card-note"><span class="nw"><b>먹보</b> 해바라기씨를 끌어당긴다.</span><span class="nw">빨리 오르지만 크게 흔들린다.</span></span>
+            </span>
+          </button>
+          <div class="start-row">
+            <label class="field">
+              <span class="nw">닉네임</span>
+              <input name="displayName" type="text" placeholder="몽보리" maxlength="20" autocomplete="nickname" required />
+            </label>
+            <div class="pills" role="group" aria-label="난이도">
+              <button type="button" class="pill" data-difficulty="easy">EASY</button>
+              <button type="button" class="pill" data-difficulty="normal">NORMAL</button>
+              <button type="button" class="pill" data-difficulty="hard">HARD</button>
+            </div>
+          </div>
+          <button id="start-button" class="primary nw" type="submit">몽글이와 시작</button>
+          <p class="hint nw">키보드: ←/→ 흔들기, 스페이스로 특기</p>
         </form>
       </section>
 
-      <section id="menu-panel" class="panel hidden">
-        <div class="panel-header">
-          <h2>난이도 선택</h2>
-          <p class="tagline">시간이 지날수록 속도와 장애물 빈도가 증가합니다.</p>
-        </div>
-        <div class="difficulty-grid">
-          <button class="difficulty" data-difficulty="easy">
-            <strong>EASY</strong>
-            <span>편안한 템포</span>
-          </button>
-          <button class="difficulty" data-difficulty="normal">
-            <strong>NORMAL</strong>
-            <span>기본 난이도</span>
-          </button>
-          <button class="difficulty" data-difficulty="hard">
-            <strong>HARD</strong>
-            <span>거친 바람</span>
-          </button>
-        </div>
-        <div class="controls">
-          <p>키보드: ←/→ 이동, 스페이스로 가속</p>
-          <p>모바일: 좌우 드래그 이동, 가속 버튼</p>
-        </div>
-        <div class="menu-actions">
-          <button class="secondary" id="menu-exit-button" type="button">게임 종료하기</button>
+      <section id="result-panel" class="panel result hidden" aria-label="결과">
+        <div class="sheet">
+          <h2 class="nw">결과</h2>
+          <p class="tagline nw" id="result-summary"></p>
+          <div class="result-stats" id="result-stats"></div>
+          <div class="leaderboard" id="leaderboard"></div>
+          <div class="result-actions">
+            <button class="secondary nw" id="retry-same-button" type="button">재도전</button>
+            <button class="primary nw" id="retry-button" type="button">난이도 선택</button>
+          </div>
         </div>
       </section>
-
-      <section id="result-panel" class="panel hidden">
-        <div class="panel-header">
-          <h2>결과</h2>
-          <p class="tagline" id="result-summary"></p>
-        </div>
-        <div class="result-stats" id="result-stats"></div>
-        <div class="leaderboard" id="leaderboard"></div>
-        <div class="result-actions">
-          <button class="secondary" id="retry-same-button" type="button">재도전</button>
-          <button class="primary" id="retry-button" type="button">난이도 선택</button>
-          <button class="secondary" id="exit-button" type="button">게임 종료하기</button>
-        </div>
-      </section>
-    </div>
-    <div id="mobile-controls" class="mobile-controls" aria-hidden="true">
-      <div id="control-pad" class="control-pad" aria-label="좌우 이동" role="button" tabindex="0">
-        <div class="pad-track"></div>
-        <div id="pad-thumb" class="pad-thumb">좌 ◀▶ 우</div>
-      </div>
-      <button id="control-boost" class="control-btn boost" type="button">가속</button>
     </div>
     <script type="module" src="/src/main.ts"></script>
   </body>
