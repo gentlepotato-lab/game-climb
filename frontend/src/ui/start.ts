@@ -1,12 +1,11 @@
 import { posingBird } from '../art/bird';
 import { CHARACTERS } from '../game/characters';
-import type { CharacterKey, DifficultyKey } from '../game/types';
+import type { CharacterKey } from '../game/types';
 import { showPanel } from './screens';
 
-// 닉네임과 마지막으로 고른 친구, 난이도는 이 브라우저에만 남긴다. 다음에 들어오면 그대로 골라져 있다.
+// 닉네임과 마지막으로 고른 친구는 이 브라우저에만 남긴다. 다음에 들어오면 그대로 골라져 있다.
 const STORAGE_KEY = 'climb_display_name';
 const CHARACTER_KEY = 'climb_character';
-const DIFFICULTY_KEY = 'climb_difficulty';
 
 const load = (key: string) => {
   try {
@@ -26,7 +25,6 @@ const save = (key: string, value: string) => {
 
 export type StartChoice = {
   character: CharacterKey;
-  difficulty: DifficultyKey;
   displayName: string;
 };
 
@@ -35,11 +33,8 @@ export const initStart = (onStart: (choice: StartChoice) => void) => {
   const input = startForm?.elements.namedItem('displayName') as HTMLInputElement | null;
   const startButton = document.getElementById('start-button');
   const cards = Array.from(document.querySelectorAll<HTMLButtonElement>('.card[data-character]'));
-  const pills = Array.from(document.querySelectorAll<HTMLButtonElement>('.pill[data-difficulty]'));
 
   let character: CharacterKey = load(CHARACTER_KEY) === 'bori' ? 'bori' : 'mongle';
-  const savedDifficulty = load(DIFFICULTY_KEY);
-  let difficulty: DifficultyKey = savedDifficulty === 'normal' || savedDifficulty === 'hard' ? savedDifficulty : 'easy';
 
   cards.forEach((card) => {
     const key = card.dataset.character as CharacterKey;
@@ -49,7 +44,6 @@ export const initStart = (onStart: (choice: StartChoice) => void) => {
 
   const paint = () => {
     cards.forEach((card) => card.setAttribute('aria-pressed', String(card.dataset.character === character)));
-    pills.forEach((pill) => pill.setAttribute('aria-pressed', String(pill.dataset.difficulty === difficulty)));
     if (startButton) startButton.textContent = `${CHARACTERS[character].name}와 시작`;
   };
 
@@ -57,13 +51,6 @@ export const initStart = (onStart: (choice: StartChoice) => void) => {
     card.addEventListener('click', () => {
       character = card.dataset.character as CharacterKey;
       save(CHARACTER_KEY, character);
-      paint();
-    });
-  });
-  pills.forEach((pill) => {
-    pill.addEventListener('click', () => {
-      difficulty = pill.dataset.difficulty as DifficultyKey;
-      save(DIFFICULTY_KEY, difficulty);
       paint();
     });
   });
@@ -79,7 +66,7 @@ export const initStart = (onStart: (choice: StartChoice) => void) => {
       return;
     }
     save(STORAGE_KEY, displayName);
-    onStart({ character, difficulty, displayName });
+    onStart({ character, displayName });
     showPanel(null);
   });
 };

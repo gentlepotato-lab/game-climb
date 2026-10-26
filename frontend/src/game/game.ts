@@ -1,24 +1,25 @@
 import { hangingBird } from '../art/bird';
 import { sceneMarkup, timeLabels } from '../art/scene';
 import { CHARACTERS } from './characters';
-import { DIFFICULTY_CONFIG, getSpeed, getSpawnInterval } from './systems/Difficulty';
+import { pace } from './pace';
 import type { GameOptions, GameResult } from './types';
 
 // 화면은 가로 360px을 기준으로 그린다. 세로는 기기 비율에 맞춰 main.ts가 정한다.
 export const GAME_WIDTH = 360;
 
-// Difficulty.ts의 속도는 세로 640px 화면에 맞춘 값이다.
+// pace.ts의 속도는 세로 640px 화면에 맞춘 값이다.
 const BASE_HEIGHT = 640;
 const MAX_LIVES = 5;
 const SAFE_START_MS = 1500;
 const HIT_COOLDOWN_MS = 700;
 const FACE_MS = 700;
 
-// 새 그림(viewBox 120x150)을 92x115로 그린다. 발이 줄을 잡는 자리는 위에서 74px, 줄은 왼쪽에서 31px이다.
-const BIRD_W = 92;
-const BIRD_H = 115;
-const GRIP_X = 31;
-const GRIP_Y = 74;
+// 새 그림(viewBox 120x160)을 76x101로 그린다. 체인은 그림의 x=20, 발은 y=122 언저리다.
+const BIRD_SCALE = 76 / 120;
+const BIRD_W = 76;
+const BIRD_H = Math.round(160 * BIRD_SCALE);
+const GRIP_X = Math.round(20 * BIRD_SCALE);
+const GRIP_Y = Math.round(122 * BIRD_SCALE);
 
 type Item = {
   kind: 'seed' | 'dust';
@@ -44,7 +45,6 @@ const featherIcon = '<svg viewBox="0 0 24 24" aria-hidden="true"><use href="#fea
 
 export const startGame = (stage: HTMLElement, options: GameOptions) => {
   const ch = CHARACTERS[options.character];
-  const config = DIFFICULTY_CONFIG[options.difficulty];
   const W = GAME_WIDTH;
   const H = stage.offsetHeight;
   const speedScale = H / BASE_HEIGHT;
@@ -65,7 +65,7 @@ export const startGame = (stage: HTMLElement, options: GameOptions) => {
   <div class="chain chain-back" style="height: ${ropeLength + 400}px"></div>
   <div class="chain chain-front" style="height: ${ropeLength + 400}px"></div>
   <div class="bird-pos" style="left: ${-GRIP_X}px; top: ${ropeLength - GRIP_Y}px; width: ${BIRD_W}px; height: ${BIRD_H}px">
-    <div class="bird-flip"><svg class="bird ${ch.prefix}-climb" viewBox="0 0 120 150" data-face="open" data-view="side" data-fx="" aria-hidden="true">${hangingBird(ch.prefix)}</svg></div>
+    <div class="bird-flip" style="transform-origin: ${GRIP_X}px 50%"><svg class="bird ${ch.prefix}-climb" viewBox="0 0 120 160" data-face="open" data-view="side" data-fx="" aria-hidden="true">${hangingBird(ch.prefix)}</svg></div>
   </div>
 </div>
 <div class="hud">
@@ -183,8 +183,8 @@ export const startGame = (stage: HTMLElement, options: GameOptions) => {
   const birdCenter = () => {
     const x = pivotX + ropeLength * Math.sin(angle);
     const y = pivotY + ropeLength * Math.cos(angle);
-    // 몸은 줄 옆, 바라보는 반대쪽에 붙는다.
-    return { x: x + (facingRight ? -12 : 12), y: y - 30 };
+    // 몸은 체인 옆, 바라보는 반대쪽에 붙는다. 머리와 가슴 사이를 가운데로 친다.
+    return { x: x + (facingRight ? -25 : 25), y: y - 30 };
   };
 
   const removeItem = (index: number) => {
@@ -198,7 +198,7 @@ export const startGame = (stage: HTMLElement, options: GameOptions) => {
     if (ch.skill === 'peck') {
       // 머리 가까이 온 먼지 하나를 쪼아 없앤다. 없으면 노려보기만 하고 쓰지 않는다.
       const center = birdCenter();
-      const headX = center.x + (facingRight ? 14 : -14);
+      const headX = center.x + (facingRight ? 15 : -15);
       const headY = center.y - 18;
       let best = -1;
       let bestDist = 120;
@@ -229,9 +229,8 @@ export const startGame = (stage: HTMLElement, options: GameOptions) => {
   };
 
   const spawn = (now: number, elapsedSec: number) => {
-    const tier = Math.floor(elapsedSec / 20);
-    const seedChance = Math.max(0.05, config.seedChance + 0.02 - tier * 0.01);
-    const kind: Item['kind'] = Math.random() < seedChance ? 'seed' : 'dust';
+    const current = pace(elapsedSec);
+    const kind: Item['kind'] = Math.random() < current.seedChance ? 'seed' : 'dust';
     const birdX = birdCenter().x;
     let x = rand(36, W - 36);
     for (let i = 0; i < 6 && now < startAt + SAFE_START_MS + 2000 && Math.abs(x - birdX) < 50; i += 1) {
@@ -246,7 +245,7 @@ export const startGame = (stage: HTMLElement, options: GameOptions) => {
       ? '<svg viewBox="0 0 20 32" aria-hidden="true"><use href="#seedS"/></svg>'
       : '<svg viewBox="0 0 40 40" aria-hidden="true"><use href="#dustS"/></svg>';
     itemsLayer.appendChild(el);
-    const speed = getSpeed(config, elapsedSec, 0) * speedScale;
+    const speed = current.speed * speedScale;
     items.push({
       kind,
       x,
@@ -261,8 +260,7 @@ export const startGame = (stage: HTMLElement, options: GameOptions) => {
       size,
       el
     });
-    const interval = Math.max(config.minSpawnMs, getSpawnInterval(config, elapsedSec) - tier * 40);
-    nextSpawnAt = now + interval;
+    nextSpawnAt = now + current.spawnMs;
   };
 
   const setLives = (value: number) => {
@@ -278,7 +276,6 @@ export const startGame = (stage: HTMLElement, options: GameOptions) => {
     setInput(0);
     const result: GameResult = {
       character: options.character,
-      difficulty: options.difficulty,
       score,
       height,
       durationMs: Math.round(now - startAt),
@@ -390,7 +387,7 @@ export const startGame = (stage: HTMLElement, options: GameOptions) => {
       }
       item.el.style.transform = `translate(${item.x - item.size / 2}px, ${item.y - item.size / 2}px) rotate(${item.angle}deg)`;
 
-      const hitRange = (item.kind === 'seed' ? 10 : item.size * 0.38) + 24;
+      const hitRange = (item.kind === 'seed' ? 10 : item.size * 0.38) + 20;
       if (Math.hypot(item.x - center.x, item.y - center.y) < hitRange) {
         if (item.kind === 'seed') {
           removeItem(i);

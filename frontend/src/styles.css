@@ -134,14 +134,15 @@ input {
 
 .portrait {
   position: relative;
-  width: 70px;
+  width: 76px;
   height: 108px;
   flex: none;
 }
 
 .portrait svg {
-  width: 70px;
-  height: 108px;
+  width: 76px;
+  height: 101px;
+  margin-top: 4px;
   overflow: visible;
 }
 
@@ -205,12 +206,6 @@ input {
   --off: var(--bo-off);
 }
 
-.start-row {
-  display: flex;
-  gap: 10px;
-  align-items: flex-end;
-}
-
 .field {
   display: flex;
   flex-direction: column;
@@ -232,30 +227,6 @@ input {
   font-size: 16px;
   -webkit-user-select: text;
   user-select: text;
-}
-
-.pills {
-  display: flex;
-  gap: 4px;
-  padding: 4px;
-  border-radius: 16px;
-  background: rgba(255, 250, 243, 0.55);
-}
-
-.pill {
-  height: 36px;
-  padding: 0 10px;
-  border: 0;
-  border-radius: 12px;
-  background: transparent;
-  color: var(--ink);
-  font-size: 12px;
-  cursor: pointer;
-}
-
-.pill[aria-pressed='true'] {
-  background: var(--ink);
-  color: #fff8f0;
 }
 
 .primary,
@@ -299,16 +270,15 @@ input {
 }
 
 .portrait .fwl {
-  transform-origin: 41px 74px;
+  transform-origin: 31px 82px;
 }
 
 .portrait .fwr {
-  transform-origin: 79px 74px;
+  transform-origin: 89px 82px;
 }
 
-.portrait .tilt,
-.bird .tilt {
-  transform-origin: 60px 76px;
+.portrait .tilt {
+  transform-origin: 60px 150px;
 }
 
 .pose-mg {
@@ -510,12 +480,12 @@ input {
 }
 
 .bird-flip {
-  transform-origin: 31px 50%;
+  will-change: transform;
 }
 
 .bird {
-  width: 92px;
-  height: 115px;
+  width: 76px;
+  height: 101px;
   overflow: visible;
   filter: drop-shadow(0 6px 8px rgba(30, 20, 40, 0.35));
 }
@@ -542,42 +512,22 @@ input {
   display: none;
 }
 
-.game-mg .bird .tilt {
-  animation: tiltSoft 2.8s ease-in-out infinite;
-}
-
-.game-bo .bird .tilt {
-  animation: tiltBo 1.2s ease-in-out infinite;
-}
-
-.bird .head,
 .bird .torso,
 .bird .wing {
   transform-box: view-box;
 }
 
-.bird .head {
-  transform-origin: 58px 60px;
-}
-
+/* 체인을 쥔 발을 축으로 몸 전체가 들썩이며 오른다. */
 .bird .torso {
-  transform-origin: 62px 116px;
+  transform-origin: 20px 122px;
 }
 
 .bird .wing {
-  transform-origin: 58px 56px;
-}
-
-.mg-climb .head {
-  animation: mgHead 1s ease-in-out infinite;
+  transform-origin: 76px 82px;
 }
 
 .mg-climb .torso {
   animation: mgTorso 1s ease-in-out infinite;
-}
-
-.bo-climb .head {
-  animation: boHead 0.82s linear infinite;
 }
 
 .bo-climb .torso {
@@ -588,16 +538,8 @@ input {
   animation: mgFlap 0.42s ease-in-out infinite;
 }
 
-.mg-flap .outer {
-  animation: outer 0.42s ease-in-out infinite;
-}
-
 .bo-flap .wing {
   animation: boFlap 0.66s linear infinite;
-}
-
-.bo-flap .outer {
-  animation: outer2 0.66s linear infinite;
 }
 
 .pop {
@@ -799,14 +741,10 @@ input {
 
 @keyframes blinkO { 0%, 92%, 97%, 100% { opacity: 1; } 93.5%, 95.5% { opacity: 0; } }
 @keyframes blinkC { 0%, 92%, 97%, 100% { opacity: 0; } 93.5%, 95.5% { opacity: 1; } }
-@keyframes mgHead { 0%, 100% { transform: none; } 35%, 60% { transform: translate(-2px, -8px) rotate(-12deg); } }
-@keyframes mgTorso { 0%, 45%, 100% { transform: none; } 70% { transform: translateY(-6px) scaleY(1.04); } }
-@keyframes boHead { 0% { transform: none; } 12% { transform: translate(-3px, -10px) rotate(-16deg); } 30% { transform: translate(-1px, -4px) rotate(-4deg); } 44% { transform: translate(-3px, -9px) rotate(-14deg); } 70%, 100% { transform: none; } }
-@keyframes boTorso { 0%, 40% { transform: none; } 52% { transform: translateY(-8px) scaleY(1.06) rotate(-3deg); } 64% { transform: translateY(-3px); } 78% { transform: translateY(-7px) rotate(4deg); } 100% { transform: none; } }
-@keyframes mgFlap { 0%, 100% { transform: none; } 50% { transform: rotate(-70deg) scaleY(0.9); } }
-@keyframes boFlap { 0% { transform: none; } 16% { transform: rotate(-80deg); } 28% { transform: rotate(-20deg); } 40% { transform: rotate(-66deg); } 62%, 100% { transform: none; } }
-@keyframes outer { 0%, 100% { opacity: 1; } 50% { opacity: 0.1; } }
-@keyframes outer2 { 0%, 62%, 100% { opacity: 1; } 16%, 40% { opacity: 0.1; } }
+@keyframes mgTorso { 0%, 100% { transform: none; } 28%, 46% { transform: rotate(-5deg); } 70% { transform: translateY(-6px) rotate(-3deg); } 86% { transform: translateY(-2px); } }
+@keyframes boTorso { 0%, 12% { transform: none; } 20%, 30% { transform: rotate(-6deg); } 40% { transform: translateY(-7px) rotate(-4deg); } 52% { transform: translateY(-2px) rotate(1deg); } 60%, 68% { transform: rotate(-5deg); } 80% { transform: translateY(-6px) rotate(-2deg); } 100% { transform: none; } }
+@keyframes mgFlap { 0%, 100% { transform: none; } 50% { transform: rotate(-48deg); } }
+@keyframes boFlap { 0% { transform: none; } 16% { transform: rotate(-56deg); } 28% { transform: rotate(-14deg); } 40% { transform: rotate(-46deg); } 62%, 100% { transform: none; } }
 @keyframes chain { from { background-position: 0 0, 0 0, 50% 0; } to { background-position: 0 135px, 0 135px, 50% 0; } }
 @keyframes pop { 0% { transform: scale(0.4); opacity: 0; } 25% { opacity: 1; } 100% { transform: scale(1.5); opacity: 0; } }
 @keyframes strain { 0% { opacity: 1; } 100% { opacity: 0.2; } }

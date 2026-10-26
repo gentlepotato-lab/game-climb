@@ -54,19 +54,20 @@ export const CHARACTERS: Record<CharacterKey, Character> = {
     key: 'bori',
     name: '보리',
     prefix: 'bo',
-    climbRate: 3.6,
+    climbRate: 3.4,
     lives: 3,
-    drive: 4.4,
-    stiffness: 5,
-    damping: 1.3,
-    reach: 128,
-    bounce: 0.55,
-    inputDelayMs: 170,
-    inputJitterMs: 70,
-    wobble: 0.7,
+    // 몽글이보다 덜 잡히고 조금 지나치지만, 휘둘려서 못 피할 만큼은 아니게 맞춘다.
+    drive: 3.5,
+    stiffness: 5.4,
+    damping: 3.2,
+    reach: 120,
+    bounce: 0.35,
+    inputDelayMs: 110,
+    inputJitterMs: 40,
+    wobble: 0.35,
     skill: 'glutton',
     skillLabel: '먹보',
     skillCooldownMs: 8000,
-    magnet: 60
+    magnet: 80
   }
 };

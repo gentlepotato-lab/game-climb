@@ -151,7 +151,7 @@
 
 - `any` 금지. 예외는 외부 SDK 인터페이스뿐.
 - API 페이로드에 명시적 타입을 준다(`api/client.ts`의 `Run`).
-- 제어값은 유니온 타입으로: `type DifficultyKey = 'easy' | 'normal' | 'hard'`
+- 제어값은 유니온 타입으로: `type CharacterKey = 'mongle' | 'bori'`
 
 ### API 호출
 
@@ -186,7 +186,7 @@
 ```
 src/main.ts           패널 흐름, 게임판 크기 맞추기, 결과 처리
 src/ui/               패널별 코드(start.ts)와 패널 전환(screens.ts)
-src/game/             game.ts(게임 돌리기), characters.ts(능력치), systems/Difficulty.ts(난이도)
+src/game/             game.ts(게임 돌리기), characters.ts(능력치), pace.ts(빠르기의 물결)
 src/art/              defs.ts(그림 조각), bird.ts(새 조립), scene.ts(창밖과 블라인드)
 src/api/client.ts     /api 요청
 src/styles.css        전역 스타일

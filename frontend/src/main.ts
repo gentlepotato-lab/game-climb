@@ -2,7 +2,7 @@ import './styles.css';
 import { api } from './api/client';
 import { DEFS } from './art/defs';
 import { GAME_WIDTH, startGame } from './game/game';
-import type { DifficultyKey, GameResult } from './game/types';
+import type { GameResult } from './game/types';
 import { initStart, StartChoice } from './ui/start';
 import { showPanel } from './ui/screens';
 
@@ -67,13 +67,15 @@ const setLeaderboard = (entries: Array<{ displayName: string; score: number; hei
   leaderboard.replaceChildren(title, ...rows);
 };
 
+// 난이도는 하나로 합쳤다(game/pace.ts). 기록 테이블의 difficulty 컬럼과 API는 그대로 두고 normal로 적는다.
+const RUN_DIFFICULTY = 'normal';
+
 let lastChoice: StartChoice | null = null;
 let current: { destroy: () => void } | null = null;
 
 const onGameOver = async (choice: StartChoice, result: GameResult) => {
   showPanel('result');
-  const difficulty: DifficultyKey = result.difficulty;
-  if (resultSummary) resultSummary.textContent = `${difficulty.toUpperCase()} 모드 도전 종료!`;
+  if (resultSummary) resultSummary.textContent = '도전 종료!';
   const heightCm = Math.round((result.height * 100) / 200);
   setStats([
     `점수: ${result.score}`,
@@ -86,7 +88,7 @@ const onGameOver = async (choice: StartChoice, result: GameResult) => {
   try {
     await api.saveRun({
       displayName: choice.displayName,
-      difficulty,
+      difficulty: RUN_DIFFICULTY,
       score: result.score,
       height: result.height,
       durationMs: result.durationMs,
@@ -97,7 +99,7 @@ const onGameOver = async (choice: StartChoice, result: GameResult) => {
   }
 
   try {
-    const board = await api.leaderboard(difficulty, 5);
+    const board = await api.leaderboard(RUN_DIFFICULTY, 5);
     setLeaderboard(Array.isArray(board.leaderboard) ? board.leaderboard : []);
   } catch (_error) {
     setLeaderboard([]);
@@ -110,7 +112,6 @@ const startRun = (choice: StartChoice) => {
   showPanel(null);
   current = startGame(stage, {
     character: choice.character,
-    difficulty: choice.difficulty,
     onGameOver: (result) => onGameOver(choice, result)
   });
 };

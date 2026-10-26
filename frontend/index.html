@@ -47,23 +47,16 @@
               <span class="card-title"><strong class="nw">보리</strong><span class="nw">엇박자 천방지축</span></span>
               <span class="stats">
                 <span class="nw">오르기</span><span class="bar" style="--n: 5"></span>
-                <span class="nw">흔들기</span><span class="bar" style="--n: 2"></span>
+                <span class="nw">흔들기</span><span class="bar" style="--n: 3"></span>
                 <span class="nw">체력</span><span class="bar" style="--n: 3"></span>
               </span>
               <span class="card-note"><span class="nw"><b>먹보</b> 해바라기씨를 끌어당긴다.</span><span class="nw">빨리 오르지만 크게 흔들린다.</span></span>
             </span>
           </button>
-          <div class="start-row">
-            <label class="field">
-              <span class="nw">닉네임</span>
-              <input name="displayName" type="text" placeholder="몽보리" maxlength="20" autocomplete="nickname" required />
-            </label>
-            <div class="pills" role="group" aria-label="난이도">
-              <button type="button" class="pill" data-difficulty="easy">EASY</button>
-              <button type="button" class="pill" data-difficulty="normal">NORMAL</button>
-              <button type="button" class="pill" data-difficulty="hard">HARD</button>
-            </div>
-          </div>
+          <label class="field">
+            <span class="nw">닉네임</span>
+            <input name="displayName" type="text" placeholder="몽보리" maxlength="20" autocomplete="nickname" required />
+          </label>
           <button id="start-button" class="primary nw" type="submit">몽글이와 시작</button>
           <p class="hint nw">키보드: ←/→ 흔들기, 스페이스로 특기</p>
         </form>
@@ -77,7 +70,7 @@
           <div class="leaderboard" id="leaderboard"></div>
           <div class="result-actions">
             <button class="secondary nw" id="retry-same-button" type="button">재도전</button>
-            <button class="primary nw" id="retry-button" type="button">난이도 선택</button>
+            <button class="primary nw" id="retry-button" type="button">친구 고르기</button>
           </div>
         </div>
       </section>
