@@ -1,13 +1,13 @@
 ﻿import 'galmuri/dist/galmuri.css';
 import './styles.css';
-import { api, setToken, User } from './api/client';
-import { initAuth } from './ui/auth';
+import { api } from './api/client';
+import { initStart, loadDisplayName } from './ui/start';
 import { showPanel } from './ui/screens';
 import { startGame } from './game/game';
 import { setLeft, setRight, queueBurst } from './game/virtualInput';
 import type { DifficultyKey, GameResult } from './game/types';
 
-let currentUser: User | null = null;
+let displayName = loadDisplayName();
 
 const resultSummary = document.getElementById('result-summary');
 const resultStats = document.getElementById('result-stats');
@@ -110,17 +110,27 @@ const setStats = (lines: string[]) => {
   resultStats.innerHTML = lines.map((line) => `<div>${line}</div>`).join('');
 };
 
+// 닉네임은 누구나 적을 수 있다. innerHTML에 그대로 넣으면 남이 적은 태그가
+// 이 화면에서 돈다. 그래서 글자로만 넣는다.
+const leaderboardRow = (left: string, right: string) => {
+  const row = document.createElement('div');
+  row.className = 'leaderboard-item';
+  const name = document.createElement('span');
+  name.textContent = left;
+  const score = document.createElement('span');
+  score.textContent = right;
+  row.append(name, score);
+  return row;
+};
+
 const setLeaderboard = (entries: Array<{ displayName: string; score: number; height: number }>) => {
   if (!leaderboard) return;
+  const title = document.createElement('h3');
+  title.textContent = '이번 주 랭킹 Top 5';
   const rows = entries.length
-    ? entries.map((entry, index) =>
-        `<div class="leaderboard-item"><span>${index + 1}. ${entry.displayName}</span><span>${entry.score}점</span></div>`
-      )
-    : ['<div class="leaderboard-item"><span>이번 주 기록이 아직 없습니다.</span><span>-</span></div>'];
-  leaderboard.innerHTML = [
-    '<h3>이번 주 랭킹 Top 5</h3>',
-    ...rows
-  ].join('');
+    ? entries.map((entry, index) => leaderboardRow(`${index + 1}. ${entry.displayName}`, `${entry.score}점`))
+    : [leaderboardRow('이번 주 기록이 아직 없습니다.', '-')];
+  leaderboard.replaceChildren(title, ...rows);
 };
 
 let lastDifficulty: DifficultyKey = 'easy';
@@ -145,6 +155,7 @@ const startRun = (difficulty: DifficultyKey) => {
 
       try {
         await api.saveRun({
+          displayName,
           difficulty,
           score: result.score,
           height: result.height,
@@ -165,8 +176,8 @@ const startRun = (difficulty: DifficultyKey) => {
   });
 };
 
-initAuth(async (user) => {
-  currentUser = user;
+initStart((name) => {
+  displayName = name;
 });
 
 const difficultyButtons = document.querySelectorAll<HTMLButtonElement>('.difficulty');
@@ -186,28 +197,11 @@ retrySameButton?.addEventListener('click', () => {
 });
 
 exitButton?.addEventListener('click', () => {
-  currentUser = null;
-  setToken('');
-  showPanel('auth');
+  showPanel('start');
 });
 
 menuExitButton?.addEventListener('click', () => {
-  currentUser = null;
-  setToken('');
-  showPanel('auth');
+  showPanel('start');
 });
 
-const token = localStorage.getItem('mongbori_token');
-if (token) {
-  setToken(token);
-  api.me()
-    .then((result) => {
-      currentUser = result.user;
-      showPanel('menu');
-    })
-    .catch(() => {
-      showPanel('auth');
-    });
-} else {
-  showPanel('auth');
-}
+showPanel('start');

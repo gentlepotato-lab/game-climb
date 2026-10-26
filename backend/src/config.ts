@@ -8,29 +8,21 @@ const env = (key: string, fallback?: string) => {
   return value !== undefined && value !== '' ? value : fallback;
 };
 
-const required = (key: string) => {
-  const value = env(key);
-  if (!value) {
-    throw new Error(`Missing required env: ${key}`);
-  }
-  return value;
-};
-
 const toNumber = (value: string | undefined, fallback: number) => {
   const parsed = Number(value);
   return Number.isFinite(parsed) ? parsed : fallback;
 };
 
+// 기본값은 lab.ps1과 GP Lab의 포트 규칙(18201)과 DB 이름(gp-lab)에 맞춘다.
 export const config = {
-  port: toNumber(env('PORT', '4000'), 4000),
+  port: toNumber(env('PORT', '18201'), 18201),
   db: {
-    host: env('DB_HOST', 'localhost') as string,
+    host: env('DB_HOST', '127.0.0.1') as string,
     port: toNumber(env('DB_PORT', '5432'), 5432),
-    name: env('DB_NAME', 'postgres') as string,
+    name: env('DB_NAME', 'gp-lab') as string,
     user: env('DB_USER', 'postgres') as string,
     pass: env('DB_PASS', 'postgres') as string
   },
-  jwtSecret: required('JWT_SECRET'),
   corsOrigin: env('CORS_ORIGIN', '*') as string,
   dbInit: env('DB_INIT', '0') === '1'
 };

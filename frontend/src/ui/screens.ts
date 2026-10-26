@@ -1,9 +1,9 @@
-type PanelName = 'auth' | 'menu' | 'result' | null;
+type PanelName = 'start' | 'menu' | 'result' | null;
 
 const overlay = document.getElementById('overlay');
 const root = document.body;
 const panels = {
-  auth: document.getElementById('auth-panel'),
+  start: document.getElementById('start-panel'),
   menu: document.getElementById('menu-panel'),
   result: document.getElementById('result-panel')
 };
