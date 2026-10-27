@@ -21,7 +21,8 @@ export type Character = {
   inputJitterMs: number;
   // 손을 안 대도 제멋대로 흔들리는 정도
   wobble: number;
-  skill: 'peck' | 'glutton';
+  // guard: 1초 동안 다가오는 먼지를 튕겨 낸다. blast: 1초 동안 화면의 먼지를 날려 버린다.
+  skill: 'guard' | 'blast';
   skillLabel: string;
   skillCooldownMs: number;
   // 늘 해바라기씨를 끌어당기는 거리(px). 0이면 끌어당기지 않는다.
@@ -45,7 +46,7 @@ export const CHARACTERS: Record<CharacterKey, Character> = {
     inputDelayMs: 0,
     inputJitterMs: 0,
     wobble: 0,
-    skill: 'peck',
+    skill: 'guard',
     skillLabel: '쪼기',
     skillCooldownMs: 8000,
     magnet: 0
@@ -65,8 +66,8 @@ export const CHARACTERS: Record<CharacterKey, Character> = {
     inputDelayMs: 110,
     inputJitterMs: 40,
     wobble: 0.35,
-    skill: 'glutton',
-    skillLabel: '먹보',
+    skill: 'blast',
+    skillLabel: '날리기',
     skillCooldownMs: 8000,
     magnet: 80
   }

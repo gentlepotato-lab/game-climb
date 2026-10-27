@@ -343,6 +343,7 @@ input {
 
 .game {
   --day: 90s;
+  --t0: calc(var(--day) * -0.05);
   position: absolute;
   inset: 0;
   z-index: 1;
@@ -391,26 +392,32 @@ input {
 
 .sun {
   animation: sunArc var(--day) linear infinite;
+  animation-delay: var(--t0);
 }
 
 .nightsky {
   animation: nightsky var(--day) linear infinite;
+  animation-delay: var(--t0);
 }
 
 .lights {
   animation: lights var(--day) linear infinite;
+  animation-delay: var(--t0);
 }
 
 .bld {
   animation: bld var(--day) linear infinite;
+  animation-delay: var(--t0);
 }
 
 .brgF {
   animation: brgF var(--day) linear infinite;
+  animation-delay: var(--t0);
 }
 
 .brgS {
   animation: brgS var(--day) linear infinite;
+  animation-delay: var(--t0);
 }
 
 .shimmer {
@@ -633,38 +640,138 @@ input {
 }
 
 .pad {
-  flex: 1;
-  height: 52px;
-  border-radius: 26px;
+  flex: 0 1 200px;
+  height: 40px;
+  border-radius: 20px;
   background: rgba(255, 248, 240, 0.16);
   border: 1px solid rgba(255, 248, 240, 0.35);
   display: flex;
   align-items: center;
   justify-content: center;
   color: #fff8f0;
-  font-size: 13px;
+  font-size: 12px;
   pointer-events: none;
 }
 
 /* 특기 단추. 다시 쓸 수 있을 때까지 남은 만큼 어둡게 덮는다. */
 .skill {
   --cool: 0;
-  width: 64px;
-  height: 64px;
+  width: 52px;
+  height: 52px;
+  margin-left: auto;
   border: 0;
   border-radius: 50%;
   background:
     conic-gradient(rgba(43, 34, 51, 0.45) calc(var(--cool) * 360deg), rgba(0, 0, 0, 0) 0),
     rgba(255, 248, 240, 0.9);
   color: var(--ink);
-  font-size: 14px;
+  font-size: 12px;
   box-shadow: 0 6px 14px rgba(30, 20, 40, 0.3);
   cursor: pointer;
+  touch-action: none;
 }
 
 .skill.ready {
   box-shadow: 0 0 0 3px rgba(255, 248, 240, 0.6), 0 6px 14px rgba(30, 20, 40, 0.3);
 }
+
+/* 시작 전 3, 2, 1 */
+.ready {
+  position: absolute;
+  inset: 0;
+  z-index: 5;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  background: rgba(28, 24, 38, 0.18);
+  color: #fff8f0;
+  pointer-events: none;
+}
+
+.ready-label {
+  font-size: 18px;
+  letter-spacing: 6px;
+  opacity: 0.9;
+}
+
+.ready-count {
+  font-family: 'Gowun Batang', serif;
+  font-size: 88px;
+  line-height: 1;
+  text-shadow: 0 6px 18px rgba(30, 20, 40, 0.35);
+}
+
+.ready-count.tick {
+  animation: tick 1s ease-out;
+}
+
+.waiting .chain,
+.waiting .bird .torso,
+.waiting .scene *,
+.waiting .tod-label {
+  animation-play-state: paused;
+}
+
+.waiting .controls {
+  opacity: 0.5;
+}
+
+/* 특기. 몽글이는 막을 펴고 콕콕 쪼고, 보리는 털을 부풀리고 날개를 세게 친다. */
+.bird .fx-guard,
+.bird .fx-wind {
+  display: none;
+}
+
+.skill-guard .bird .fx-guard,
+.skill-blast .bird .fx-wind {
+  display: inline;
+}
+
+.bird .guard-ring {
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: guardPulse 0.5s ease-out infinite;
+}
+
+.skill-guard .bird .torso {
+  animation: mgPeck 0.25s ease-in-out infinite;
+}
+
+.skill-blast .bird .torso {
+  animation: boPuff 1s ease-out;
+}
+
+.skill-blast .bird .wing {
+  animation: boBlast 0.16s ease-in-out infinite;
+}
+
+.bird .wind {
+  transform-box: view-box;
+  transform-origin: 58px 86px;
+  opacity: 0;
+  animation: wind 0.5s ease-out infinite;
+}
+
+.bird .wind2 {
+  animation-delay: 0.12s;
+}
+
+.bird .wind3 {
+  animation-delay: 0.24s;
+}
+
+.item-flung svg {
+  filter: brightness(1.25) drop-shadow(0 0 4px rgba(170, 185, 255, 0.9));
+}
+
+@keyframes tick { 0% { transform: scale(1.5); opacity: 0; } 20% { transform: scale(1); opacity: 1; } 100% { transform: scale(1); opacity: 1; } }
+@keyframes guardPulse { 0% { transform: scale(0.85); opacity: 0.9; } 100% { transform: scale(1.08); opacity: 0.2; } }
+@keyframes mgPeck { 0%, 100% { transform: none; } 50% { transform: rotate(-9deg) translateX(-2px); } }
+@keyframes boPuff { 0% { transform: scale(1); } 20% { transform: scale(1.08, 1.04); } 100% { transform: scale(1); } }
+@keyframes boBlast { 0%, 100% { transform: none; } 50% { transform: rotate(-62deg); } }
+@keyframes wind { 0% { transform: scale(0.7); opacity: 0.9; } 100% { transform: scale(1.5); opacity: 0; } }
 
 /* ── 결과 ────────────────────────────────────── */
 

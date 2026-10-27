@@ -26,7 +26,8 @@ ${use(prefix + 'Cheek')}${use(prefix + 'Beak')}
 <g class="face face-derpy"><g transform="translate(1.2 -1.6)">${use(prefix + 'Eye')}</g></g>
 </g></g>
 <g class="fx fx-dust"><circle class="pop" cx="42" cy="34" r="12" fill="#e9e3f0" opacity=".9"/><circle class="pop" cx="72" cy="28" r="9" fill="#ddd6e8"/></g>
-<g class="fx fx-peck"><circle class="pop" cx="20" cy="56" r="10" fill="#ece6f2"/><path d="M12 48 l-6 -4 M12 64 l-7 3 M10 56 l-8 0" stroke="#fff8f0" stroke-width="1.6" stroke-linecap="round"/></g>`;
+<g class="fx-guard"><circle cx="58" cy="86" r="66" fill="url(#guardG)"/><circle class="guard-ring" cx="58" cy="86" r="66" fill="none" stroke="#8aa0ff" stroke-width="3" opacity=".8"/></g>
+<g class="fx-wind" fill="none" stroke="#ffffff" stroke-linecap="round"><path class="wind wind1" d="M96 40 Q122 86 96 132" stroke-width="4"/><path class="wind wind2" d="M108 30 Q140 86 108 142" stroke-width="3"/><path class="wind wind3" d="M120 20 Q158 86 120 152" stroke-width="2.4"/><path class="wind wind1" d="M20 40 Q-6 86 20 132" stroke-width="4"/><path class="wind wind2" d="M8 30 Q-24 86 8 142" stroke-width="3"/></g>`;
 };
 
 // 고르는 화면의 정면 모습. 예쁜 짓은 styles.css의 .pose-mg, .pose-bo가 맡는다.

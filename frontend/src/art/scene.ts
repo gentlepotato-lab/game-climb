@@ -11,7 +11,8 @@ const TIMES: Array<[string, string]> = [
 ];
 
 // 여섯 장이 차례로 떠오르도록 한 장씩 1/6 바퀴씩 앞당긴다.
-const delay = (i: number) => (i === 0 ? '0s' : `calc(var(--day) * ${-(6 - i) / 6})`);
+// --t0만큼 앞당겨 아침이 다 떠오른 자리에서 시작한다.
+const delay = (i: number) => (i === 0 ? 'var(--t0)' : `calc(var(--day) * ${-(6 - i) / 6} + var(--t0))`);
 
 export const skyLayers = () =>
   `<div class="sky" style="background: ${TIMES[5][1]}"></div>` +

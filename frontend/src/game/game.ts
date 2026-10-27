@@ -13,6 +13,12 @@ const MAX_LIVES = 5;
 const SAFE_START_MS = 1500;
 const HIT_COOLDOWN_MS = 700;
 const FACE_MS = 700;
+// 시작 전 3, 2, 1을 센다.
+const READY_MS = 3000;
+// 특기는 누르면 1초 동안 간다.
+const SKILL_MS = 1000;
+// 몽글이가 먼지를 튕겨 내는 막의 반지름(px)
+const GUARD_RANGE = 70;
 
 // 새 그림(viewBox 120x160)을 76x101로 그린다. 체인은 그림의 x=20, 발은 y=122 언저리다.
 const BIRD_SCALE = 76 / 120;
@@ -34,6 +40,8 @@ type Item = {
   angle: number;
   size: number;
   el: HTMLDivElement;
+  // 특기에 튕기거나 날아간 먼지. 닿지 않고 화면 밖으로 사라진다.
+  flung?: { vx: number; vy: number; life: number };
 };
 
 type Face = 'open' | 'effort' | 'happy' | 'hurt' | 'surprise' | 'glare' | 'derpy';
@@ -57,7 +65,7 @@ export const startGame = (stage: HTMLElement, options: GameOptions) => {
   const maxAngle = Math.asin(Math.min(0.9, ch.reach / ropeLength));
 
   const root = document.createElement('div');
-  root.className = `game game-${ch.prefix}`;
+  root.className = `game game-${ch.prefix} waiting`;
   root.innerHTML = `
 <div class="scene">${sceneMarkup()}</div>
 <div class="items"></div>
@@ -65,7 +73,7 @@ export const startGame = (stage: HTMLElement, options: GameOptions) => {
   <div class="chain chain-back" style="height: ${ropeLength + 400}px"></div>
   <div class="chain chain-front" style="height: ${ropeLength + 400}px"></div>
   <div class="bird-pos" style="left: ${-GRIP_X}px; top: ${ropeLength - GRIP_Y}px; width: ${BIRD_W}px; height: ${BIRD_H}px">
-    <div class="bird-flip" style="transform-origin: ${GRIP_X}px 50%"><svg class="bird ${ch.prefix}-climb" viewBox="0 0 120 160" data-face="open" data-view="side" data-fx="" aria-hidden="true">${hangingBird(ch.prefix)}</svg></div>
+    <div class="bird-flip" style="transform-origin: ${GRIP_X}px 50%"><svg class="bird ${ch.prefix}-climb" viewBox="0 0 120 160" data-face="open" data-view="front" data-fx="" aria-hidden="true">${hangingBird(ch.prefix)}</svg></div>
   </div>
 </div>
 <div class="hud">
@@ -73,6 +81,7 @@ export const startGame = (stage: HTMLElement, options: GameOptions) => {
   <div class="hud-feathers">${featherIcon.repeat(MAX_LIVES)}</div>
 </div>
 <div class="tod-pill nw">${timeLabels()}</div>
+<div class="ready" aria-live="polite"><span class="ready-label nw">READY</span><strong class="ready-count">3</strong></div>
 <div class="controls">
   <div class="pad nw">◀ 끌어서 줄 흔들기 ▶</div>
   <button class="skill nw" type="button">${ch.skillLabel}</button>
@@ -88,6 +97,8 @@ export const startGame = (stage: HTMLElement, options: GameOptions) => {
   const hudPoints = $<HTMLElement>('.hud-points');
   const feathers = Array.from(root.querySelectorAll('.hud-feathers svg'));
   const skillButton = $<HTMLButtonElement>('.skill');
+  const readyEl = $<HTMLDivElement>('.ready');
+  const readyCount = $<HTMLElement>('.ready-count');
 
   const items: Item[] = [];
   let lives = ch.lives;
@@ -102,13 +113,14 @@ export const startGame = (stage: HTMLElement, options: GameOptions) => {
   let raf = 0;
   let lastFrame = 0;
 
-  const startAt = performance.now();
+  const startAt = performance.now() + READY_MS;
+  let started = false;
+  let shownCount = 0;
   let nextSpawnAt = startAt + SAFE_START_MS;
   let hitCooldownUntil = 0;
   let hurtUntil = 0;
   let happyUntil = 0;
-  let peckUntil = 0;
-  let magnetUntil = 0;
+  let skillUntil = 0;
   let skillReadyAt = startAt;
   let frontUntil = 0;
   let nextFrontAt = startAt + rand(4000, 7000);
@@ -144,17 +156,29 @@ export const startGame = (stage: HTMLElement, options: GameOptions) => {
   const keyInput = () => (keyLeft ? -1 : 0) + (keyRight ? 1 : 0);
 
   // 끌기는 화면 어디서든 받는다. 시작점에서 40px 밀면 끝까지 기운다.
+  // 손가락마다 따로 따라가고 화면을 붙잡지 않는다. 그래야 한 손가락으로 흔들면서
+  // 다른 손가락으로 필살기를 누를 수 있다.
   let dragId: number | null = null;
   let dragStartX = 0;
   const toLocalX = (clientX: number) => {
     const rect = root.getBoundingClientRect();
     return ((clientX - rect.left) / rect.width) * W;
   };
+  const onSkillButton = (clientX: number, clientY: number) => {
+    const r = skillButton.getBoundingClientRect();
+    const pad = 10;
+    return clientX >= r.left - pad && clientX <= r.right + pad && clientY >= r.top - pad && clientY <= r.bottom + pad;
+  };
   const onPointerDown = (event: PointerEvent) => {
-    if (ended || dragId !== null) return;
+    if (ended) return;
+    if (onSkillButton(event.clientX, event.clientY)) {
+      event.preventDefault();
+      useSkill();
+      return;
+    }
+    if (dragId !== null) return;
     dragId = event.pointerId;
     dragStartX = toLocalX(event.clientX);
-    root.setPointerCapture(event.pointerId);
   };
   const onPointerMove = (event: PointerEvent) => {
     if (event.pointerId !== dragId) return;
@@ -194,36 +218,25 @@ export const startGame = (stage: HTMLElement, options: GameOptions) => {
 
   const useSkill = () => {
     const now = performance.now();
-    if (ended || now < skillReadyAt) return;
-    if (ch.skill === 'peck') {
-      // 머리 가까이 온 먼지 하나를 쪼아 없앤다. 없으면 노려보기만 하고 쓰지 않는다.
-      const center = birdCenter();
-      const headX = center.x + (facingRight ? 15 : -15);
-      const headY = center.y - 18;
-      let best = -1;
-      let bestDist = 120;
-      items.forEach((item, index) => {
-        if (item.kind !== 'dust') return;
-        const dist = Math.hypot(item.x - headX, item.y - headY);
-        if (dist < bestDist) {
-          best = index;
-          bestDist = dist;
-        }
-      });
-      peckUntil = now + 500;
-      if (best < 0) return;
-      removeItem(best);
-      avoided += 1;
-      bird.dataset.fx = 'peck';
-      window.setTimeout(() => { if (bird.dataset.fx === 'peck') bird.dataset.fx = ''; }, 450);
-    } else {
-      magnetUntil = now + 3000;
-      happyUntil = now + 500;
-    }
+    if (ended || now < startAt || now < skillReadyAt) return;
+    skillUntil = now + SKILL_MS;
     skillReadyAt = now + ch.skillCooldownMs;
+    root.classList.add(`skill-${ch.skill}`);
+    window.setTimeout(() => root.classList.remove(`skill-${ch.skill}`), SKILL_MS);
   };
-  const onSkill = (event: PointerEvent) => {
-    event.stopPropagation();
+
+  // 먼지를 바깥으로 내보낸다. 닿지 않고 빙글 돌며 사라진다.
+  const fling = (item: Item, from: { x: number; y: number }, speed: number, lift: number) => {
+    const dx = item.x - from.x;
+    const dy = item.y - from.y;
+    const dist = Math.hypot(dx, dy) || 1;
+    item.flung = { vx: (dx / dist) * speed, vy: (dy / dist) * speed - lift, life: 0.8 };
+    item.spin *= 6;
+    item.el.classList.add('item-flung');
+    avoided += 1;
+  };
+  // 터치 이벤트만 따로 오는 기기를 위해 단추에도 한 번 더 건다. 두 번 불려도 쿨타임이 막는다.
+  const onSkillTouch = (event: TouchEvent) => {
     event.preventDefault();
     useSkill();
   };
@@ -295,10 +308,10 @@ export const startGame = (stage: HTMLElement, options: GameOptions) => {
 
     let face: Face = Math.floor((now - startAt) / 1600) % 3 === 0 ? 'effort' : 'open';
     let view = 'side';
-    if (now < hurtUntil) face = 'hurt';
+    if (now < skillUntil) face = ch.skill === 'guard' ? 'glare' : 'effort';
+    else if (now < hurtUntil) face = 'hurt';
     else if (now < happyUntil) face = 'happy';
-    else if (now < peckUntil) face = 'glare';
-    else if (ch.skill === 'peck' && threat) face = 'glare';
+    else if (ch.prefix === 'mg' && threat) face = 'glare';
     else if (ch.prefix === 'bo' && Math.abs(angularVelocity) > 0.9) face = 'surprise';
     else if (now < frontUntil) view = 'front';
     else if (now < derpyUntil) face = 'derpy';
@@ -335,6 +348,25 @@ export const startGame = (stage: HTMLElement, options: GameOptions) => {
 
   const frame = (now: number) => {
     if (ended) return;
+    // READY: 정면을 보고 3, 2, 1을 센다. 그동안 아무것도 떨어지지 않는다.
+    if (now < startAt) {
+      const left = Math.ceil((startAt - now) / 1000);
+      if (left !== shownCount) {
+        readyCount.textContent = String(left);
+        readyCount.classList.remove('tick');
+        void readyCount.offsetWidth;
+        readyCount.classList.add('tick');
+        shownCount = left;
+      }
+      lastFrame = now;
+      raf = requestAnimationFrame(frame);
+      return;
+    }
+    if (!started) {
+      started = true;
+      root.classList.remove('waiting');
+      readyEl.classList.add('hidden');
+    }
     const dt = Math.min(0.05, (now - (lastFrame || now)) / 1000);
     lastFrame = now;
     const elapsedSec = (now - startAt) / 1000;
@@ -365,11 +397,33 @@ export const startGame = (stage: HTMLElement, options: GameOptions) => {
     if (now >= nextSpawnAt) spawn(now, elapsedSec);
 
     const center = birdCenter();
-    const magnetRange = now < magnetUntil ? 140 : ch.magnet;
+    const magnetRange = ch.magnet;
+    const skillOn = now < skillUntil;
     let threat = false;
 
     for (let i = items.length - 1; i >= 0; i -= 1) {
       const item = items[i];
+      if (item.flung) {
+        item.x += item.flung.vx * dt;
+        item.y += item.flung.vy * dt;
+        item.angle += item.spin * dt;
+        item.flung.life -= dt;
+        item.el.style.opacity = String(Math.max(0, item.flung.life / 0.8));
+        item.el.style.transform = `translate(${item.x - item.size / 2}px, ${item.y - item.size / 2}px) rotate(${item.angle}deg)`;
+        if (item.flung.life <= 0) removeItem(i);
+        continue;
+      }
+      if (skillOn && item.kind === 'dust') {
+        // 몽글이는 막에 닿는 먼지를 쪼아 튕겨 내고, 보리는 화면의 먼지를 모두 날려 버린다.
+        if (ch.skill === 'blast') {
+          fling(item, center, 560, 140);
+          continue;
+        }
+        if (Math.hypot(item.x - center.x, item.y - center.y) < GUARD_RANGE + item.size * 0.3) {
+          fling(item, center, 300, 220);
+          continue;
+        }
+      }
       item.y += item.vy * dt;
       item.angle += item.spin * dt;
       if (item.kind === 'dust') {
@@ -431,10 +485,10 @@ export const startGame = (stage: HTMLElement, options: GameOptions) => {
   };
 
   root.addEventListener('pointerdown', onPointerDown);
-  root.addEventListener('pointermove', onPointerMove);
-  root.addEventListener('pointerup', onPointerUp);
-  root.addEventListener('pointercancel', onPointerUp);
-  skillButton.addEventListener('pointerdown', onSkill);
+  window.addEventListener('pointermove', onPointerMove);
+  window.addEventListener('pointerup', onPointerUp);
+  window.addEventListener('pointercancel', onPointerUp);
+  skillButton.addEventListener('touchstart', onSkillTouch, { passive: false });
   window.addEventListener('keydown', onKeyDown);
   window.addEventListener('keyup', onKeyUp);
   raf = requestAnimationFrame(frame);
@@ -445,6 +499,9 @@ export const startGame = (stage: HTMLElement, options: GameOptions) => {
       cancelAnimationFrame(raf);
       window.removeEventListener('keydown', onKeyDown);
       window.removeEventListener('keyup', onKeyUp);
+      window.removeEventListener('pointermove', onPointerMove);
+      window.removeEventListener('pointerup', onPointerUp);
+      window.removeEventListener('pointercancel', onPointerUp);
       root.remove();
     }
   };
