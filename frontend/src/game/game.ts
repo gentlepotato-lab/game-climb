@@ -1,5 +1,6 @@
 import { bgm } from '../audio/bgm';
 import { hangingBird } from '../art/bird';
+import { sprayerSvg } from '../art/sprayer';
 import { sceneMarkup, timeLabels } from '../art/scene';
 import { CHARACTERS } from './characters';
 import { pace } from './pace';
@@ -20,6 +21,9 @@ const READY_MS = 3000;
 const SKILL_MS = 1000;
 // 몽글이가 먼지를 튕겨 내는 막의 반지름(px)
 const GUARD_RANGE = 70;
+// 분무기 한 번이 물방울까지 다 사라지는 시간과, 두 번 뿌리는 때(ms). 뿌리는 때는 styles.css의 sprayArm과 맞춘다.
+const SPRAY_MS = 4600;
+const SPRAY_PUFFS_MS = [620, 1120];
 
 // 새 그림(viewBox 120x160)을 76x101로 그린다. 체인은 그림의 x=20, 발은 y=122 언저리다.
 const BIRD_SCALE = 76 / 120;
@@ -165,6 +169,7 @@ export const startGame = (stage: HTMLElement, options: GameOptions) => {
   const skillButton = $<HTMLButtonElement>('.skill');
   const readyEl = $<HTMLDivElement>('.countdown');
   const readyCount = $<HTMLElement>('.countdown-count');
+  const hud = $<HTMLDivElement>('.hud');
 
   const items: Item[] = [];
   let lives = ch.lives;
@@ -192,7 +197,16 @@ export const startGame = (stage: HTMLElement, options: GameOptions) => {
   let happyUntil = 0;
   let skillUntil = 0;
   let lastTinkAt = 0;
+  // 새 근처에 마지막으로 떨어뜨린 때. 오래 비면 새 위로 겨눠 떨어뜨린다.
+  let lastNearAt = startAt;
+  // 먼지에 맞은 만큼 머리가 잿빛으로 물든다.
+  let soot = 0;
   let wasCooling = false;
+  // 분무기. 아주 가끔 화면 위 한쪽에서 손이 들어와 물을 뿌리고, 그을린 머리를 씻어 준다.
+  // 양옆을 번갈아 오고, 머리가 두 번 넘게 그을렸을 때만 온다.
+  let nextSprayAt = startAt + rand(20000, 30000);
+  let spraySide: 'left' | 'right' = Math.random() < 0.5 ? 'left' : 'right';
+  let spray: { el: HTMLDivElement; at: number; puffs: number; washed: boolean } | null = null;
   let skillReadyAt = startAt;
   let frontUntil = 0;
   let nextFrontAt = startAt + rand(4000, 7000);
@@ -322,12 +336,16 @@ export const startGame = (stage: HTMLElement, options: GameOptions) => {
 
   const spawn = (now: number, elapsedSec: number) => {
     const current = pace(elapsedSec);
-    const kind: Item['kind'] = Math.random() < current.seedChance ? 'seed' : 'dust';
     const birdX = birdCenter().x;
-    let x = rand(36, W - 36);
-    for (let i = 0; i < 6 && now < startAt + SAFE_START_MS + 2000 && Math.abs(x - birdX) < 50; i += 1) {
+    // 가만히 있어도 비켜 가지 못하게, 새 근처가 2.6초 넘게 비면 새 바로 위로 떨어뜨린다.
+    // 그때는 먼지가 잦고, 가끔 해바라기씨가 섞인다.
+    const aimed = now - lastNearAt > 2600;
+    const kind: Item['kind'] = Math.random() < (aimed ? 0.25 : current.seedChance) ? 'seed' : 'dust';
+    let x = aimed ? clamp(birdX + rand(-16, 16), 36, W - 36) : rand(36, W - 36);
+    for (let i = 0; !aimed && i < 6 && now < startAt + SAFE_START_MS + 2000 && Math.abs(x - birdX) < 50; i += 1) {
       x = rand(36, W - 36);
     }
+    if (Math.abs(x - birdX) < 50) lastNearAt = now;
     const size = kind === 'seed' ? 18 : Math.round(rand(30, 42));
     const el = document.createElement('div');
     el.className = `item item-${kind}`;
@@ -353,6 +371,63 @@ export const startGame = (stage: HTMLElement, options: GameOptions) => {
       el
     });
     nextSpawnAt = now + current.spawnMs;
+  };
+
+  const startSpray = (now: number) => {
+    const el = document.createElement('div');
+    el.className = `sprayer from-${spraySide}`;
+    // 물방울은 노즐에서 부채꼴로 퍼진다. 화면 아래쪽으로 조금씩 처지며 날아간다.
+    let drops = '';
+    for (let puff = 0; puff < SPRAY_PUFFS_MS.length; puff += 1) {
+      for (let i = 0; i < 40; i += 1) {
+        const dist = rand(60, 680);
+        const a = rand(-0.7, 0.7);
+        const sag = rand(20, 110) * (dist / 680);
+        const dx = dist * Math.cos(a) + sag * 0.53;
+        const dy = dist * Math.sin(a) + sag * 0.85;
+        const delay = SPRAY_PUFFS_MS[puff] + rand(0, 140);
+        drops += `<i style="--dx: ${dx.toFixed(0)}px; --dy: ${dy.toFixed(0)}px; --s: ${rand(3, 7).toFixed(1)}px; --d: ${delay.toFixed(0)}ms; --t: ${rand(1300, 2000).toFixed(0)}ms"></i>`;
+      }
+    }
+    // 퍼진 물안개는 화면 전체에 내려앉는다.
+    let drizzle = '';
+    for (let i = 0; i < 36; i += 1) {
+      drizzle += `<i style="left: ${rand(10, W - 10).toFixed(0)}px; top: ${rand(110, H - 160).toFixed(0)}px; --fy: ${rand(120, 260).toFixed(0)}px; --s: ${rand(3, 6).toFixed(1)}px; --d: ${rand(800, 1600).toFixed(0)}ms; --t: ${rand(2000, 2800).toFixed(0)}ms"></i>`;
+    }
+    el.innerHTML = `<div class="drizzle">${drizzle}</div><div class="mist"><b></b><b></b>${drops}</div><div class="spray-arm">${sprayerSvg()}</div>`;
+    root.insertBefore(el, hud);
+    spray = { el, at: now, puffs: 0, washed: false };
+    spraySide = spraySide === 'left' ? 'right' : 'left';
+  };
+
+  const stepSpray = (now: number) => {
+    if (!spray) {
+      if (now < nextSprayAt) return;
+      if (soot >= 2) {
+        startSpray(now);
+        nextSprayAt = now + rand(30000, 45000);
+      } else {
+        nextSprayAt = now + 4000;
+      }
+      return;
+    }
+    const t = now - spray.at;
+    if (spray.puffs < SPRAY_PUFFS_MS.length && t >= SPRAY_PUFFS_MS[spray.puffs]) {
+      bgm.sfx('spray');
+      spray.puffs += 1;
+    }
+    if (!spray.washed && t >= SPRAY_PUFFS_MS[0] + 330) {
+      spray.washed = true;
+      soot = 0;
+      bird.classList.add('rinse');
+      bird.style.setProperty('--soot', '0');
+      happyUntil = now + FACE_MS;
+    }
+    if (t >= SPRAY_MS) {
+      spray.el.remove();
+      bird.classList.remove('rinse');
+      spray = null;
+    }
   };
 
   const setLives = (value: number) => {
@@ -492,6 +567,7 @@ export const startGame = (stage: HTMLElement, options: GameOptions) => {
     height = Math.floor(elapsedSec * ch.climbRate);
 
     if (now >= nextSpawnAt) spawn(now, elapsedSec);
+    stepSpray(now);
 
     const center = birdCenter();
     const magnetRange = ch.magnet;
@@ -559,6 +635,8 @@ export const startGame = (stage: HTMLElement, options: GameOptions) => {
           bird.dataset.fx = 'dust';
           window.setTimeout(() => { if (bird.dataset.fx === 'dust') bird.dataset.fx = ''; }, 600);
           setLives(lives - 1);
+          soot = Math.min(5, soot + 1);
+          bird.style.setProperty('--soot', String(soot * 0.06));
           if (lives <= 0) {
             score = Math.floor(height * 2 + avoided * 15 + bonus);
             render(now, false);

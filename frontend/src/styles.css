@@ -587,6 +587,11 @@ input {
   filter: drop-shadow(0 6px 8px rgba(30, 20, 40, 0.35));
 }
 
+.bird .soot {
+  opacity: var(--soot, 0);
+  transition: opacity 0.4s;
+}
+
 .bird .face,
 .bird .fx {
   display: none;
@@ -647,6 +652,185 @@ input {
 
 .strain {
   animation: strain 0.5s steps(2) infinite;
+}
+
+/* 분무기. 아주 가끔 화면 위 한쪽에서 손이 들어와 두 번 뿌리고 나간다. 오른쪽에서 올 때는 통째로 뒤집는다.
+   시간은 game.ts의 SPRAY_MS, SPRAY_PUFFS_MS와 맞춘다. 손은 2.9초 동안 머물고, 뿌리는 때는 그 21%와 38%다. 물방울은 그 뒤로 더 남는다. */
+.sprayer {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+
+.sprayer.from-right {
+  transform: scaleX(-1);
+}
+
+.drizzle {
+  position: absolute;
+  inset: 0;
+}
+
+.spray-arm,
+.mist {
+  position: absolute;
+  left: -6px;
+  top: calc(104px + env(safe-area-inset-top));
+  width: 130px;
+  height: 102px;
+  transform-origin: 0 20px;
+}
+
+.mist {
+  transform: rotate(32deg);
+}
+
+.spray-arm {
+  animation: sprayArm 2.9s both;
+}
+
+.sprayer-art {
+  display: block;
+  overflow: visible;
+}
+
+.sprayer-art .trigger {
+  transform-origin: 98px 26px;
+  animation: sprayTrigger 2.9s both;
+}
+
+.mist i,
+.mist b,
+.drizzle i {
+  position: absolute;
+  left: 128px;
+  top: 15px;
+  opacity: 0;
+}
+
+.mist i,
+.drizzle i {
+  width: var(--s);
+  height: var(--s);
+  margin: calc(var(--s) / -2) 0 0 calc(var(--s) / -2);
+  border-radius: 50%;
+  background: radial-gradient(circle at 35% 35%, #ffffff 0 18%, rgba(150, 205, 232, 0.9) 55%, rgba(96, 160, 200, 0.85));
+  box-shadow: 0 0 3px rgba(255, 255, 255, 0.8);
+  animation: mistDrop var(--t) cubic-bezier(0.1, 0.75, 0.3, 1) var(--d) both;
+}
+
+.drizzle i {
+  animation-name: mistFall;
+  animation-timing-function: ease-in;
+}
+
+.mist b {
+  width: 640px;
+  height: 420px;
+  margin-top: -210px;
+  background: radial-gradient(ellipse 100% 50% at 0% 50%, rgba(214, 238, 250, 0.95), rgba(190, 226, 246, 0.5) 45%, rgba(190, 226, 246, 0));
+  transform-origin: 0 50%;
+  animation: mistHaze 2s ease-out 0.62s both;
+}
+
+.mist b + b {
+  animation-delay: 1.12s;
+}
+
+.bird.rinse .soot {
+  transition: opacity 1.4s ease-out;
+}
+
+@keyframes sprayArm {
+  0% {
+    transform: translate(-150px, -60px) rotate(10deg);
+    animation-timing-function: cubic-bezier(0.2, 0.8, 0.3, 1.1);
+  }
+  18% {
+    transform: translate(0, 0) rotate(32deg);
+  }
+  21% {
+    transform: translate(-4px, -2px) rotate(31deg);
+  }
+  25% {
+    transform: translate(0, 0) rotate(32deg);
+  }
+  38% {
+    transform: translate(-4px, -2px) rotate(31deg);
+  }
+  42% {
+    transform: translate(0, 0) rotate(32deg);
+  }
+  58% {
+    transform: translate(0, 0) rotate(34deg);
+  }
+  74% {
+    transform: translate(0, 0) rotate(32deg);
+    animation-timing-function: cubic-bezier(0.5, 0, 0.8, 0.4);
+  }
+  100% {
+    transform: translate(-160px, -70px) rotate(8deg);
+  }
+}
+
+@keyframes sprayTrigger {
+  0%,
+  19%,
+  25%,
+  36%,
+  42%,
+  100% {
+    transform: none;
+  }
+  21.5%,
+  38.5% {
+    transform: rotate(-9deg);
+  }
+}
+
+@keyframes mistDrop {
+  0% {
+    transform: translate(0, 0) scale(0.4);
+    opacity: 0;
+  }
+  8% {
+    opacity: 0.95;
+  }
+  70% {
+    opacity: 0.8;
+  }
+  100% {
+    transform: translate(var(--dx), var(--dy)) scale(1);
+    opacity: 0;
+  }
+}
+
+@keyframes mistFall {
+  0% {
+    transform: translateY(0) scale(0.6);
+    opacity: 0;
+  }
+  15% {
+    opacity: 0.85;
+  }
+  100% {
+    transform: translateY(var(--fy)) scale(1);
+    opacity: 0;
+  }
+}
+
+@keyframes mistHaze {
+  0% {
+    transform: scale(0.08, 0.15);
+    opacity: 0;
+  }
+  15% {
+    opacity: 0.9;
+  }
+  100% {
+    transform: scale(1);
+    opacity: 0;
+  }
 }
 
 .hud {

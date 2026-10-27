@@ -30,7 +30,8 @@ const fitStage = () => {
 fitStage();
 window.addEventListener('resize', fitStage);
 
-// 배경 음악. 브라우저가 첫 손길 뒤에야 소리를 내게 해 주므로 그때 깨운다.
+// 배경 음악. 화면이 뜨자마자 켜 본다. 홈 화면 앱처럼 브라우저가 허락하면 바로 나오고,
+// 허락하지 않으면 첫 손길에서 깨운다.
 const soundButton = document.getElementById('sound') as HTMLButtonElement;
 const paintSound = () => {
   soundButton.setAttribute('aria-pressed', String(!bgm.muted));
@@ -43,9 +44,11 @@ soundButton.addEventListener('click', () => {
   paintSound();
 });
 const wake = () => bgm.unlock();
-window.addEventListener('pointerdown', wake);
-window.addEventListener('keydown', wake);
+['pointerdown', 'touchstart', 'mousedown', 'keydown', 'click'].forEach((type) =>
+  window.addEventListener(type, wake, { capture: true, passive: true })
+);
 bgm.play('select');
+bgm.unlock();
 
 const resultSummary = document.getElementById('result-summary');
 const resultStats = document.getElementById('result-stats');

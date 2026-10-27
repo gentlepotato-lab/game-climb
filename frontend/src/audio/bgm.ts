@@ -9,7 +9,7 @@
 // 효과음도 같은 방식으로 그 자리에서 만든다. 소리 끄기를 함께 따른다.
 
 export type Track = 'select' | 'game';
-export type Sfx = 'tick' | 'go' | 'seed' | 'hit' | 'guard' | 'tink' | 'blast' | 'ready' | 'over' | 'pick' | 'chirp';
+export type Sfx = 'tick' | 'go' | 'seed' | 'hit' | 'guard' | 'tink' | 'blast' | 'ready' | 'over' | 'pick' | 'chirp' | 'spray';
 
 const MUTE_KEY = 'climb_bgm_muted';
 const LOOKAHEAD = 0.15;
@@ -118,13 +118,18 @@ class Bgm {
       window.setTimeout(() => old.disconnect(), 2000);
     }
     const bus = ctx.createGain();
-    bus.gain.value = 0;
-    bus.gain.setTargetAtTime(1, ctx.currentTime, 0.4);
+    // 처음 곡은 기다리지 않고 바로 소리를 낸다. 곡을 바꿀 때만 서서히 피어난다.
+    if (this.bus) {
+      bus.gain.value = 0;
+      bus.gain.setTargetAtTime(1, ctx.currentTime, 0.4);
+    } else {
+      bus.gain.value = 1;
+    }
     bus.connect(this.muffle ?? master);
     this.bus = bus;
     this.track = track;
     this.step = 0;
-    this.nextTime = ctx.currentTime + 0.1;
+    this.nextTime = ctx.currentTime + 0.02;
     window.clearInterval(this.timer);
     this.timer = window.setInterval(() => this.schedule(), TICK_MS);
   }
@@ -180,8 +185,8 @@ class Bgm {
 
   private pad(freqs: number[], t: number, dur: number, gain: number) {
     freqs.forEach((f) => {
-      this.voice('triangle', f, t, dur * 0.35, dur * 0.9, gain, 900);
-      this.voice('triangle', f * 1.004, t, dur * 0.35, dur * 0.9, gain * 0.6, 900);
+      this.voice('triangle', f, t, Math.min(0.3, dur * 0.35), dur * 0.9, gain, 900);
+      this.voice('triangle', f * 1.004, t, Math.min(0.3, dur * 0.35), dur * 0.9, gain * 0.6, 900);
     });
   }
 
@@ -269,6 +274,34 @@ class Bgm {
     amp.gain.exponentialRampToValueAtTime(0.0001, t + dur);
     src.connect(filter);
     filter.connect(amp);
+    amp.connect(this.sfxBus!);
+    src.start(t);
+    src.stop(t + dur + 0.05);
+  }
+
+  // 분무기 물소리. 가는 물줄기가 쉭 뿜어졌다가 잦아든다.
+  private hiss(t: number, dur: number, gain: number) {
+    const ctx = this.ctx!;
+    const src = ctx.createBufferSource();
+    src.buffer = this.noise;
+    src.loop = true;
+    const band = ctx.createBiquadFilter();
+    band.type = 'bandpass';
+    band.Q.value = 0.6;
+    band.frequency.setValueAtTime(6200, t);
+    band.frequency.exponentialRampToValueAtTime(4200, t + dur);
+    const high = ctx.createBiquadFilter();
+    high.type = 'highpass';
+    high.frequency.value = 2200;
+    const amp = ctx.createGain();
+    amp.gain.setValueAtTime(0, t);
+    amp.gain.linearRampToValueAtTime(gain, t + 0.012);
+    amp.gain.linearRampToValueAtTime(gain * 0.6, t + 0.07);
+    amp.gain.linearRampToValueAtTime(gain * 0.45, t + dur * 0.6);
+    amp.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+    src.connect(band);
+    band.connect(high);
+    high.connect(amp);
     amp.connect(this.sfxBus!);
     src.start(t);
     src.stop(t + dur + 0.05);
@@ -364,6 +397,11 @@ class Bgm {
         this.call(t + 0.17, f * 1.15, 0.055, 0.11);
         break;
       }
+      case 'spray':
+        // 치익. 방아쇠가 딸깍하고 물이 뿜어진다.
+        this.tone('square', 1800, t, 0.001, 0.015, 0.03, 0, 4000);
+        this.hiss(t + 0.01, 0.36, 0.22);
+        break;
       case 'pick':
         this.tone('sine', hz('B5'), t, 0.002, 0.07, 0.12);
         break;
