@@ -1,4 +1,5 @@
 import { posingBird } from '../art/bird';
+import { bgm } from '../audio/bgm';
 import { CHARACTERS } from '../game/characters';
 import type { CharacterKey } from '../game/types';
 import { showPanel } from './screens';
@@ -51,6 +52,8 @@ export const initStart = (onStart: (choice: StartChoice) => void) => {
     card.addEventListener('click', () => {
       character = card.dataset.character as CharacterKey;
       save(CHARACTER_KEY, character);
+      bgm.unlock();
+      bgm.sfx('pick');
       paint();
     });
   });

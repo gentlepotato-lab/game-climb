@@ -1,5 +1,6 @@
 import './styles.css';
 import { api } from './api/client';
+import { bgm } from './audio/bgm';
 import { DEFS } from './art/defs';
 import { GAME_WIDTH, startGame } from './game/game';
 import type { GameResult } from './game/types';
@@ -28,6 +29,23 @@ const fitStage = () => {
 };
 fitStage();
 window.addEventListener('resize', fitStage);
+
+// 배경 음악. 브라우저가 첫 손길 뒤에야 소리를 내게 해 주므로 그때 깨운다.
+const soundButton = document.getElementById('sound') as HTMLButtonElement;
+const paintSound = () => {
+  soundButton.setAttribute('aria-pressed', String(!bgm.muted));
+  soundButton.classList.toggle('off', bgm.muted);
+};
+paintSound();
+soundButton.addEventListener('click', () => {
+  bgm.unlock();
+  bgm.setMuted(!bgm.muted);
+  paintSound();
+});
+const wake = () => bgm.unlock();
+window.addEventListener('pointerdown', wake);
+window.addEventListener('keydown', wake);
+bgm.play('select');
 
 const resultSummary = document.getElementById('result-summary');
 const resultStats = document.getElementById('result-stats');
@@ -75,6 +93,7 @@ let current: { destroy: () => void } | null = null;
 
 const onGameOver = async (choice: StartChoice, result: GameResult) => {
   showPanel('result');
+  bgm.play('select');
   if (resultSummary) resultSummary.textContent = '도전 종료!';
   const heightCm = Math.round((result.height * 100) / 200);
   setStats([
@@ -110,6 +129,7 @@ const startRun = (choice: StartChoice) => {
   lastChoice = choice;
   current?.destroy();
   showPanel(null);
+  bgm.play('game');
   current = startGame(stage, {
     character: choice.character,
     onGameOver: (result) => onGameOver(choice, result)

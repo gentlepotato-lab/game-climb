@@ -1,3 +1,4 @@
+import { bgm } from '../audio/bgm';
 import { hangingBird } from '../art/bird';
 import { sceneMarkup, timeLabels } from '../art/scene';
 import { CHARACTERS } from './characters';
@@ -57,22 +58,84 @@ export const startGame = (stage: HTMLElement, options: GameOptions) => {
   const H = stage.offsetHeight;
   const speedScale = H / BASE_HEIGHT;
 
-  // 줄 위쪽은 화면 위 바깥에 매여 있고, 새는 화면 높이의 70% 자리에서 매달린다.
+  // 줄 위쪽은 화면 위 바깥에 매여 있고, 새는 화면 높이의 80% 자리에서 매달린다.
+  // 흔들면 체인이 화면 가로 끝까지 닿아, 떨어지는 것을 어디서든 받을 수 있다.
   const pivotX = W / 2;
   const pivotY = -0.16 * H;
-  const gripY = 0.7 * H;
+  const gripY = 0.8 * H;
   const ropeLength = gripY - pivotY;
-  const maxAngle = Math.asin(Math.min(0.9, ch.reach / ropeLength));
+  const maxAngle = Math.asin(Math.min(0.9, Math.min(ch.reach, W / 2 - 12) / ropeLength));
+
+  // 구슬 체인. 마디 열네 개짜리 줄로 셈한다. 위끝은 화면 위에 매여 있고, 새가 쥔 자리에서
+  // 한 번 더 붙잡힌다. 그 사이 마디는 관성과 무게로 늦게 따라와서, 흔들면 가운데가 휘었다가 펴진다.
+  // 새 아래로는 몇 마디가 늘어져 흔들린다.
+  const SEGMENTS = 14;
+  const TAIL = 5;
+  const segLength = (ropeLength * 1.03) / SEGMENTS;
+  const rx = new Float32Array(SEGMENTS + TAIL + 1);
+  const ry = new Float32Array(SEGMENTS + TAIL + 1);
+  const ox = new Float32Array(SEGMENTS + TAIL + 1);
+  const oy = new Float32Array(SEGMENTS + TAIL + 1);
+  for (let i = 0; i < rx.length; i += 1) {
+    rx[i] = ox[i] = pivotX;
+    ry[i] = oy[i] = pivotY + (ropeLength / SEGMENTS) * i;
+  }
+  const stepRope = (dt: number, gx: number, gy: number) => {
+    const fall = 1400 * dt * dt;
+    for (let i = 1; i < rx.length; i += 1) {
+      if (i === SEGMENTS) continue;
+      const vx = (rx[i] - ox[i]) * 0.98;
+      const vy = (ry[i] - oy[i]) * 0.98;
+      ox[i] = rx[i];
+      oy[i] = ry[i];
+      rx[i] += vx;
+      ry[i] += vy + fall;
+    }
+    rx[0] = pivotX;
+    ry[0] = pivotY;
+    rx[SEGMENTS] = ox[SEGMENTS] = gx;
+    ry[SEGMENTS] = oy[SEGMENTS] = gy;
+    for (let k = 0; k < 10; k += 1) {
+      for (let i = 0; i < rx.length - 1; i += 1) {
+        const dx = rx[i + 1] - rx[i];
+        const dy = ry[i + 1] - ry[i];
+        const d = Math.hypot(dx, dy) || 1;
+        if (d <= segLength) continue;
+        const aFixed = i === 0 || i === SEGMENTS;
+        const bFixed = i + 1 === SEGMENTS;
+        if (aFixed && bFixed) continue;
+        const wa = aFixed ? 0 : bFixed ? 1 : 0.5;
+        const wb = bFixed ? 0 : aFixed ? 1 : 0.5;
+        const diff = (d - segLength) / d;
+        rx[i] += dx * diff * wa;
+        ry[i] += dy * diff * wa;
+        rx[i + 1] -= dx * diff * wb;
+        ry[i + 1] -= dy * diff * wb;
+      }
+    }
+  };
+  const ropePath = () => {
+    let d = `M${rx[0].toFixed(1)} ${ry[0].toFixed(1)}`;
+    for (let i = 1; i < rx.length - 1; i += 1) {
+      d += ` Q${rx[i].toFixed(1)} ${ry[i].toFixed(1)} ${((rx[i] + rx[i + 1]) / 2).toFixed(1)} ${((ry[i] + ry[i + 1]) / 2).toFixed(1)}`;
+    }
+    return `${d} L${rx[rx.length - 1].toFixed(1)} ${ry[ry.length - 1].toFixed(1)}`;
+  };
+  // 오를 때 구슬이 흘러내리는 빠르기(px/s)
+  const beadSpeed = 48 * (ch.climbRate / 3);
+  let beadOffset = 0;
 
   const root = document.createElement('div');
   root.className = `game game-${ch.prefix} waiting`;
   root.innerHTML = `
 <div class="scene">${sceneMarkup()}</div>
 <div class="items"></div>
+<svg class="rope" viewBox="0 0 ${W} ${H}" width="${W}" height="${H}" aria-hidden="true">
+  <g class="rope-back"><path class="rope-line"/><path class="rope-beads-edge"/><path class="rope-beads"/></g>
+  <path class="rope-line"/><path class="rope-beads-edge"/><path class="rope-beads"/><path class="rope-stops-edge"/><path class="rope-stops"/>
+</svg>
 <div class="rig" style="left: ${pivotX}px; top: ${pivotY}px">
-  <div class="chain chain-back" style="height: ${ropeLength + 400}px"></div>
-  <div class="chain chain-front" style="height: ${ropeLength + 400}px"></div>
-  <div class="bird-pos" style="left: ${-GRIP_X}px; top: ${ropeLength - GRIP_Y}px; width: ${BIRD_W}px; height: ${BIRD_H}px">
+  <div class="bird-pos" style="left: ${-GRIP_X}px; top: ${ropeLength - GRIP_Y}px; width: ${BIRD_W}px; height: ${BIRD_H}px; transform-origin: ${GRIP_X}px ${GRIP_Y}px">
     <div class="bird-flip" style="transform-origin: ${GRIP_X}px 50%"><svg class="bird ${ch.prefix}-climb" viewBox="0 0 120 160" data-face="open" data-view="front" data-fx="" aria-hidden="true">${hangingBird(ch.prefix)}</svg></div>
   </div>
 </div>
@@ -81,7 +144,7 @@ export const startGame = (stage: HTMLElement, options: GameOptions) => {
   <div class="hud-feathers">${featherIcon.repeat(MAX_LIVES)}</div>
 </div>
 <div class="tod-pill nw">${timeLabels()}</div>
-<div class="ready" aria-live="polite"><span class="ready-label nw">READY</span><strong class="ready-count">3</strong></div>
+<div class="countdown" aria-live="polite"><span class="countdown-label nw">READY</span><strong class="countdown-count">3</strong></div>
 <div class="controls">
   <div class="pad nw">◀ 끌어서 줄 흔들기 ▶</div>
   <button class="skill nw" type="button">${ch.skillLabel}</button>
@@ -92,18 +155,25 @@ export const startGame = (stage: HTMLElement, options: GameOptions) => {
   const itemsLayer = $<HTMLDivElement>('.items');
   const rig = $<HTMLDivElement>('.rig');
   const flip = $<HTMLDivElement>('.bird-flip');
+  const birdPos = $<HTMLDivElement>('.bird-pos');
+  const ropePaths = Array.from(root.querySelectorAll<SVGPathElement>('.rope path'));
+  const ropeBeads = Array.from(root.querySelectorAll<SVGPathElement>('.rope-beads, .rope-beads-edge, .rope-stops, .rope-stops-edge'));
   const bird = $<SVGSVGElement>('.bird');
   const hudHeight = $<HTMLSpanElement>('.hud-height');
   const hudPoints = $<HTMLElement>('.hud-points');
   const feathers = Array.from(root.querySelectorAll('.hud-feathers svg'));
   const skillButton = $<HTMLButtonElement>('.skill');
-  const readyEl = $<HTMLDivElement>('.ready');
-  const readyCount = $<HTMLElement>('.ready-count');
+  const readyEl = $<HTMLDivElement>('.countdown');
+  const readyCount = $<HTMLElement>('.countdown-count');
 
   const items: Item[] = [];
   let lives = ch.lives;
   let angle = 0;
   let angularVelocity = 0;
+  // 관성. 손의 힘은 조금 늦게 실리고, 체인 끝의 새는 한 박자 늦게 따라 흔들린다.
+  let push = 0;
+  let sway = 0;
+  let swayVelocity = 0;
   let facingRight = false;
   let score = 0;
   let height = 0;
@@ -121,6 +191,8 @@ export const startGame = (stage: HTMLElement, options: GameOptions) => {
   let hurtUntil = 0;
   let happyUntil = 0;
   let skillUntil = 0;
+  let lastTinkAt = 0;
+  let wasCooling = false;
   let skillReadyAt = startAt;
   let frontUntil = 0;
   let nextFrontAt = startAt + rand(4000, 7000);
@@ -222,6 +294,7 @@ export const startGame = (stage: HTMLElement, options: GameOptions) => {
     skillUntil = now + SKILL_MS;
     skillReadyAt = now + ch.skillCooldownMs;
     root.classList.add(`skill-${ch.skill}`);
+    bgm.sfx(ch.skill === 'guard' ? 'guard' : 'blast');
     window.setTimeout(() => root.classList.remove(`skill-${ch.skill}`), SKILL_MS);
   };
 
@@ -234,6 +307,12 @@ export const startGame = (stage: HTMLElement, options: GameOptions) => {
     item.spin *= 6;
     item.el.classList.add('item-flung');
     avoided += 1;
+    // 튕길 때마다 소리를 낸다. 한꺼번에 여럿이면 겹치지 않게 사이를 둔다.
+    const now = performance.now();
+    if (ch.skill === 'guard' && now - lastTinkAt > 70) {
+      bgm.sfx('tink');
+      lastTinkAt = now;
+    }
   };
   // 터치 이벤트만 따로 오는 기기를 위해 단추에도 한 번 더 건다. 두 번 불려도 쿨타임이 막는다.
   const onSkillTouch = (event: TouchEvent) => {
@@ -284,6 +363,7 @@ export const startGame = (stage: HTMLElement, options: GameOptions) => {
 
   const finish = (now: number) => {
     ended = true;
+    bgm.sfx('over');
     cancelAnimationFrame(raf);
     root.classList.add('paused');
     setInput(0);
@@ -305,6 +385,10 @@ export const startGame = (stage: HTMLElement, options: GameOptions) => {
 
   const render = (now: number, threat: boolean) => {
     rig.style.transform = `rotate(${-angle}rad)`;
+    const d = ropePath();
+    ropePaths.forEach((path) => path.setAttribute('d', d));
+    ropeBeads.forEach((path) => path.setAttribute('stroke-dashoffset', beadOffset.toFixed(1)));
+    birdPos.style.transform = `rotate(${-sway}rad)`;
 
     let face: Face = Math.floor((now - startAt) / 1600) % 3 === 0 ? 'effort' : 'open';
     let view = 'side';
@@ -344,6 +428,8 @@ export const startGame = (stage: HTMLElement, options: GameOptions) => {
     const cool = clamp((skillReadyAt - now) / ch.skillCooldownMs, 0, 1);
     skillButton.style.setProperty('--cool', String(cool));
     skillButton.classList.toggle('ready', cool === 0);
+    if (wasCooling && cool === 0) bgm.sfx('ready');
+    wasCooling = cool > 0;
   };
 
   const frame = (now: number) => {
@@ -357,7 +443,11 @@ export const startGame = (stage: HTMLElement, options: GameOptions) => {
         void readyCount.offsetWidth;
         readyCount.classList.add('tick');
         shownCount = left;
+        bgm.sfx('tick', left);
       }
+      stepRope(Math.min(0.05, (now - (lastFrame || now)) / 1000), pivotX, pivotY + ropeLength);
+      const d = ropePath();
+      ropePaths.forEach((path) => path.setAttribute('d', d));
       lastFrame = now;
       raf = requestAnimationFrame(frame);
       return;
@@ -366,6 +456,7 @@ export const startGame = (stage: HTMLElement, options: GameOptions) => {
       started = true;
       root.classList.remove('waiting');
       readyEl.classList.add('hidden');
+      bgm.sfx('go');
     }
     const dt = Math.min(0.05, (now - (lastFrame || now)) / 1000);
     lastFrame = now;
@@ -381,13 +472,19 @@ export const startGame = (stage: HTMLElement, options: GameOptions) => {
       nextNoiseAt = now + 300;
     }
     const u = effectiveInput(now);
-    const accel = ch.drive * u + noise - ch.stiffness * Math.sin(angle) - ch.damping * angularVelocity;
+    push += (u - push) * Math.min(1, dt * 7);
+    const accel = ch.drive * push + noise - ch.stiffness * Math.sin(angle) - ch.damping * angularVelocity;
     angularVelocity += accel * dt;
     angle += angularVelocity * dt;
     if (Math.abs(angle) > maxAngle) {
       angle = Math.sign(angle) * maxAngle;
       angularVelocity = -angularVelocity * ch.bounce;
     }
+    // 새는 체인보다 늦게 따라온다. 출발할 때는 뒤로 처지고, 멈출 때는 앞으로 쏠린다.
+    swayVelocity += (-sway * 70 - swayVelocity * 9 + accel * 3.5) * dt;
+    sway = clamp(sway + swayVelocity * dt, -0.4, 0.4);
+    stepRope(dt, pivotX + ropeLength * Math.sin(angle), pivotY + ropeLength * Math.cos(angle));
+    beadOffset -= beadSpeed * dt;
     if (angularVelocity > 0.12) facingRight = true;
     else if (angularVelocity < -0.12) facingRight = false;
 
@@ -447,6 +544,7 @@ export const startGame = (stage: HTMLElement, options: GameOptions) => {
           removeItem(i);
           bonus += 120;
           setLives(lives + 1);
+          bgm.sfx('seed');
           happyUntil = now + FACE_MS;
           continue;
         }
@@ -454,6 +552,10 @@ export const startGame = (stage: HTMLElement, options: GameOptions) => {
           removeItem(i);
           hitCooldownUntil = now + HIT_COOLDOWN_MS;
           hurtUntil = now + FACE_MS;
+          bgm.sfx('hit');
+          bgm.stumble();
+          // 가끔 모란앵무가 '삐빅' 운다.
+          if (Math.random() < 0.5) bgm.sfx('chirp');
           bird.dataset.fx = 'dust';
           window.setTimeout(() => { if (bird.dataset.fx === 'dust') bird.dataset.fx = ''; }, 600);
           setLives(lives - 1);
