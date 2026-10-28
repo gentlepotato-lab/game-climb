@@ -11,6 +11,9 @@
 export type Track = 'select' | 'game';
 export type Sfx = 'tick' | 'go' | 'seed' | 'hit' | 'guard' | 'tink' | 'blast' | 'ready' | 'over' | 'pick' | 'chirp' | 'spray';
 
+// 청소기 소리. 켜 두는 동안 낮게 웅 하고, level로 가까움을 0에서 1까지 알려 준다.
+export type Hum = { level: (value: number) => void; stop: () => void };
+
 const MUTE_KEY = 'climb_bgm_muted';
 const LOOKAHEAD = 0.15;
 const TICK_MS = 30;
@@ -277,6 +280,67 @@ class Bgm {
     amp.connect(this.sfxBus!);
     src.start(t);
     src.stop(t + dur + 0.05);
+  }
+
+  // 청소기 모터. 낮은 톱니파와 거친 바람 소리를 겹치고, 모터가 조금씩 떨리게 한다.
+  // 가까워지면 조금 커지고 높아진다. 과하지 않게 작게 깐다.
+  hum(): Hum {
+    const ctx = this.ctx;
+    const none: Hum = { level: () => {}, stop: () => {} };
+    if (!ctx || !this.sfxBus || ctx.state !== 'running') return none;
+    const t = ctx.currentTime;
+    const out = ctx.createGain();
+    out.gain.setValueAtTime(0, t);
+    out.gain.linearRampToValueAtTime(0.05, t + 0.6);
+    out.connect(this.sfxBus);
+    const motor = ctx.createOscillator();
+    motor.type = 'sawtooth';
+    motor.frequency.value = 118;
+    const tone = ctx.createBiquadFilter();
+    tone.type = 'lowpass';
+    tone.frequency.value = 520;
+    const wobble = ctx.createOscillator();
+    wobble.frequency.value = 5.5;
+    const depth = ctx.createGain();
+    depth.gain.value = 90;
+    wobble.connect(depth);
+    depth.connect(tone.frequency);
+    motor.connect(tone);
+    tone.connect(out);
+    const air = ctx.createBufferSource();
+    air.buffer = this.noise;
+    air.loop = true;
+    const band = ctx.createBiquadFilter();
+    band.type = 'bandpass';
+    band.frequency.value = 1500;
+    band.Q.value = 0.7;
+    const airGain = ctx.createGain();
+    airGain.gain.value = 0.55;
+    air.connect(band);
+    band.connect(airGain);
+    airGain.connect(out);
+    motor.start(t);
+    wobble.start(t);
+    air.start(t);
+    let stopped = false;
+    return {
+      level: (value) => {
+        if (stopped) return;
+        const now = ctx.currentTime;
+        out.gain.setTargetAtTime(0.04 + 0.04 * value, now, 0.2);
+        motor.frequency.setTargetAtTime(118 + 22 * value, now, 0.3);
+        band.frequency.setTargetAtTime(1500 + 900 * value, now, 0.3);
+      },
+      stop: () => {
+        if (stopped) return;
+        stopped = true;
+        const now = ctx.currentTime;
+        out.gain.cancelScheduledValues(now);
+        out.gain.setTargetAtTime(0, now, 0.15);
+        motor.frequency.setTargetAtTime(70, now, 0.25);
+        [motor, wobble, air].forEach((node) => node.stop(now + 0.8));
+      }
+    };
   }
 
   // 분무기 물소리. 가는 물줄기가 쉭 뿜어졌다가 잦아든다.

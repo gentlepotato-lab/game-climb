@@ -384,10 +384,14 @@ input {
 
 .game-mg {
   --feather: #b9c2e8;
+  --hp-a: #e3e7ff;
+  --hp-b: #a4afee;
 }
 
 .game-bo {
   --feather: #ffd866;
+  --hp-a: #fff0b0;
+  --hp-b: #f2c230;
 }
 
 .paused,
@@ -863,20 +867,175 @@ input {
   font-size: 18px;
 }
 
-.hud-feathers {
+/* 체력 고리. 새 얼굴 둘레를 고리가 감싸고, 숫자가 옆에 붙는다. 25 아래로 내려가면 산호색으로 바뀌며 빛난다. */
+.hud-hp {
   display: flex;
-  gap: 2px;
-  color: var(--feather);
+  align-items: center;
+  gap: 8px;
 }
 
-.hud-feathers svg {
-  width: 18px;
-  height: 18px;
-  transition: opacity 0.3s;
+.hp-ring {
+  position: relative;
+  width: 46px;
+  height: 46px;
+  margin: -7px 0;
 }
 
-.hud-feathers svg.off {
-  opacity: 0.28;
+.hp-ring > svg:first-child {
+  position: absolute;
+  inset: 0;
+  transform: rotate(-90deg);
+}
+
+.hp-a {
+  stop-color: var(--hp-a);
+}
+
+.hp-b {
+  stop-color: var(--hp-b);
+}
+
+.hp-track,
+.hp-fill {
+  fill: none;
+  stroke-width: 5;
+}
+
+.hp-track {
+  stroke: rgba(255, 255, 255, 0.18);
+}
+
+.hp-fill {
+  stroke: url(#hpG);
+  stroke-linecap: round;
+  transition: stroke-dasharray 0.35s ease-out;
+}
+
+.hp-face {
+  position: absolute;
+  left: 7px;
+  top: 7px;
+  border-radius: 50%;
+  background: #f3ede6;
+}
+
+.hp-num {
+  min-width: 28px;
+  font-size: 16px;
+  text-align: right;
+}
+
+.hud-hp.low {
+  --hp-a: #ffc2b4;
+  --hp-b: #ee6f62;
+}
+
+.hud-hp.low .hp-ring {
+  animation: hpLow 1s ease-in-out infinite;
+}
+
+.hud-hp.hurt .hp-ring {
+  animation: hpHurt 0.4s ease-out;
+}
+
+.hud-hp.heal .hp-ring {
+  animation: hpHeal 0.4s ease-out;
+}
+
+@keyframes hpLow {
+  0%,
+  100% {
+    filter: drop-shadow(0 0 0 rgba(238, 111, 98, 0));
+  }
+  50% {
+    filter: drop-shadow(0 0 6px rgba(238, 111, 98, 0.9));
+  }
+}
+
+@keyframes hpHurt {
+  0% {
+    transform: translateX(0);
+  }
+  25% {
+    transform: translateX(-3px) rotate(-6deg);
+  }
+  50% {
+    transform: translateX(3px) rotate(5deg);
+  }
+  75% {
+    transform: translateX(-2px);
+  }
+  100% {
+    transform: none;
+  }
+}
+
+@keyframes hpHeal {
+  0% {
+    transform: scale(1);
+  }
+  40% {
+    transform: scale(1.12);
+  }
+  100% {
+    transform: scale(1);
+  }
+}
+
+/* 청소기. game.ts가 자리를 옮긴다. 왼쪽에서 올 때는 팔이 왼쪽 위로 가도록 뒤집는다. */
+.vacuum {
+  position: absolute;
+  left: 0;
+  top: 0;
+  pointer-events: none;
+  will-change: transform;
+}
+
+.vacuum-body {
+  position: relative;
+  animation: vacSway 1.8s ease-in-out infinite;
+}
+
+.vacuum.from-left .vacuum-body {
+  scale: -1 1;
+}
+
+.vacuum-art {
+  position: relative;
+  display: block;
+}
+
+/* 바닥 솔 아래로 빨아들이는 바람. 엷은 줄이 위로 흘러 들어간다. */
+.vacuum-wind {
+  position: absolute;
+  width: 100px;
+  height: 140px;
+  clip-path: polygon(28% 0, 72% 0, 100% 100%, 0 100%);
+  background:
+    repeating-linear-gradient(0deg, rgba(255, 255, 255, 0) 0 14px, rgba(255, 255, 255, 0.5) 14px 16px),
+    linear-gradient(rgba(255, 255, 255, 0.45), rgba(255, 255, 255, 0));
+  -webkit-mask-image: linear-gradient(#000, rgba(0, 0, 0, 0));
+  mask-image: linear-gradient(#000, rgba(0, 0, 0, 0));
+  animation: vacWind 0.5s linear infinite;
+}
+
+@keyframes vacSway {
+  0%,
+  100% {
+    rotate: -3deg;
+  }
+  50% {
+    rotate: 3deg;
+  }
+}
+
+@keyframes vacWind {
+  from {
+    background-position: 0 0, 0 0;
+  }
+  to {
+    background-position: 0 -16px, 0 0;
+  }
 }
 
 .tod-pill {

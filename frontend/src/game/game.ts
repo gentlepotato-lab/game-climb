@@ -1,5 +1,6 @@
-import { bgm } from '../audio/bgm';
+import { bgm, type Hum } from '../audio/bgm';
 import { hangingBird } from '../art/bird';
+import { noodleSvg, pelletSvg, vacuumSvg } from '../art/items';
 import { sprayerSvg } from '../art/sprayer';
 import { sceneMarkup, timeLabels } from '../art/scene';
 import { CHARACTERS } from './characters';
@@ -11,7 +12,22 @@ export const GAME_WIDTH = 360;
 
 // pace.ts의 속도는 세로 640px 화면에 맞춘 값이다.
 const BASE_HEIGHT = 640;
-const MAX_LIVES = 5;
+// 체력은 0에서 100이다. 먹을 것은 채우고, 먼지와 청소기는 깎는다.
+const MAX_HP = 100;
+const LOW_HP = 25;
+const DUST_DAMAGE = 20;
+const VACUUM_DAMAGE = 35;
+const FOOD = {
+  pellet: { heal: 8, bonus: 50, w: 33, h: 31 },
+  seed: { heal: 15, bonus: 120, w: 18, h: 29 },
+  noodle: { heal: 30, bonus: 250, w: 44, h: 24 }
+};
+// 청소기가 머무는 시간(ms). 0.8초 만에 들어와 6.2초까지 새 높이로 내려오고, 그 뒤 올라가 사라진다.
+const VACUUM_IN_MS = 800;
+const VACUUM_DOWN_MS = 6200;
+// 청소기 그림(viewBox 130x250)을 가로 78px로 그린다. 바닥 솔 아래 가운데가 (60, 244)다.
+const VAC_W = 78;
+const VAC_S = VAC_W / 130;
 const SAFE_START_MS = 1500;
 const HIT_COOLDOWN_MS = 700;
 const FACE_MS = 700;
@@ -33,7 +49,7 @@ const GRIP_X = Math.round(20 * BIRD_SCALE);
 const GRIP_Y = Math.round(122 * BIRD_SCALE);
 
 type Item = {
-  kind: 'seed' | 'dust';
+  kind: 'dust' | keyof typeof FOOD;
   x: number;
   y: number;
   x0: number;
@@ -51,10 +67,18 @@ type Item = {
 
 type Face = 'open' | 'effort' | 'happy' | 'hurt' | 'surprise' | 'glare' | 'derpy';
 
+// 먼지 크기. 작은 것이 35%, 중간이 45%, 큰 것이 20%다. 클수록 닿는 범위도 넓다.
+const dustSize = () => {
+  const r = Math.random();
+  return Math.round(r < 0.35 ? rand(20, 26) : r < 0.8 ? rand(30, 40) : rand(48, 58));
+};
+
 const clamp = (v: number, min: number, max: number) => Math.min(max, Math.max(min, v));
 const rand = (min: number, max: number) => min + Math.random() * (max - min);
 
-const featherIcon = '<svg viewBox="0 0 24 24" aria-hidden="true"><use href="#feather"/></svg>';
+// 체력 고리의 둘레
+const HP_CIRC = 2 * Math.PI * 21;
+const headUse = (id: string) => `<use href="#${id}" width="120" height="160"/>`;
 
 export const startGame = (stage: HTMLElement, options: GameOptions) => {
   const ch = CHARACTERS[options.character];
@@ -145,7 +169,13 @@ export const startGame = (stage: HTMLElement, options: GameOptions) => {
 </div>
 <div class="hud">
   <div class="hud-score"><span class="hud-height nw">높이 0cm</span><strong class="hud-points nw">0</strong></div>
-  <div class="hud-feathers">${featherIcon.repeat(MAX_LIVES)}</div>
+  <div class="hud-hp">
+    <div class="hp-ring">
+      <svg viewBox="0 0 50 50" width="46" height="46" aria-hidden="true"><defs><linearGradient id="hpG" x1="0" y1="0" x2="1" y2="1"><stop offset="0" class="hp-a"/><stop offset="1" class="hp-b"/></linearGradient></defs><circle class="hp-track" cx="25" cy="25" r="21"/><circle class="hp-fill" cx="25" cy="25" r="21" stroke-dasharray="0 ${HP_CIRC.toFixed(1)}"/></svg>
+      <svg class="hp-face" viewBox="17 12 58 58" width="32" height="32" aria-hidden="true">${headUse(ch.prefix + 'Body')}${headUse(ch.prefix + 'Cheek')}${headUse(ch.prefix + 'Beak')}${headUse(ch.prefix + 'Eye')}</svg>
+    </div>
+    <strong class="hp-num nw">0</strong>
+  </div>
 </div>
 <div class="tod-pill nw">${timeLabels()}</div>
 <div class="countdown" aria-live="polite"><span class="countdown-label nw">READY</span><strong class="countdown-count">3</strong></div>
@@ -165,14 +195,16 @@ export const startGame = (stage: HTMLElement, options: GameOptions) => {
   const bird = $<SVGSVGElement>('.bird');
   const hudHeight = $<HTMLSpanElement>('.hud-height');
   const hudPoints = $<HTMLElement>('.hud-points');
-  const feathers = Array.from(root.querySelectorAll('.hud-feathers svg'));
+  const hpBox = $<HTMLDivElement>('.hud-hp');
+  const hpFill = $<SVGCircleElement>('.hp-fill');
+  const hpNum = $<HTMLElement>('.hp-num');
   const skillButton = $<HTMLButtonElement>('.skill');
   const readyEl = $<HTMLDivElement>('.countdown');
   const readyCount = $<HTMLElement>('.countdown-count');
   const hud = $<HTMLDivElement>('.hud');
 
   const items: Item[] = [];
-  let lives = ch.lives;
+  let hp = ch.hp;
   let angle = 0;
   let angularVelocity = 0;
   // 관성. 손의 힘은 조금 늦게 실리고, 체인 끝의 새는 한 박자 늦게 따라 흔들린다.
@@ -207,6 +239,10 @@ export const startGame = (stage: HTMLElement, options: GameOptions) => {
   let nextSprayAt = startAt + rand(20000, 30000);
   let spraySide: 'left' | 'right' = Math.random() < 0.5 ? 'left' : 'right';
   let spray: { el: HTMLDivElement; at: number; puffs: number; washed: boolean } | null = null;
+  // 청소기. 가끔 화면 위 양옆 중 한쪽에서 나와 새 쪽으로 천천히 다가가며 내려온다.
+  // 바닥 솔 아래 바람에 들어가면 새가 그쪽으로 끌려가고, 솔에 닿으면 체력이 깎인다. 지나가는 먼지는 빨아들인다.
+  let nextVacuumAt = startAt + rand(18000, 25000);
+  let vacuum: { el: HTMLDivElement; at: number; x: number; y: number; leaving: boolean; hum: Hum } | null = null;
   let skillReadyAt = startAt;
   let frontUntil = 0;
   let nextFrontAt = startAt + rand(4000, 7000);
@@ -338,22 +374,30 @@ export const startGame = (stage: HTMLElement, options: GameOptions) => {
     const current = pace(elapsedSec);
     const birdX = birdCenter().x;
     // 가만히 있어도 비켜 가지 못하게, 새 근처가 2.6초 넘게 비면 새 바로 위로 떨어뜨린다.
-    // 그때는 먼지가 잦고, 가끔 해바라기씨가 섞인다.
+    // 그때는 먼지가 잦고, 넷에 하나꼴로 먹을 것이 섞인다.
     const aimed = now - lastNearAt > 2600;
-    const kind: Item['kind'] = Math.random() < (aimed ? 0.25 : current.seedChance) ? 'seed' : 'dust';
+    // 먹을 것 가운데 펠렛이 60%, 해바라기씨가 30%, 국수 생면이 10%다.
+    let kind: Item['kind'] = 'dust';
+    if (Math.random() < (aimed ? 0.25 : current.foodChance)) {
+      const r = Math.random();
+      kind = r < 0.6 ? 'pellet' : r < 0.9 ? 'seed' : 'noodle';
+    }
     let x = aimed ? clamp(birdX + rand(-16, 16), 36, W - 36) : rand(36, W - 36);
     for (let i = 0; !aimed && i < 6 && now < startAt + SAFE_START_MS + 2000 && Math.abs(x - birdX) < 50; i += 1) {
       x = rand(36, W - 36);
     }
     if (Math.abs(x - birdX) < 50) lastNearAt = now;
-    const size = kind === 'seed' ? 18 : Math.round(rand(30, 42));
+    const food = kind === 'dust' ? null : FOOD[kind];
+    const size = food ? food.w : dustSize();
     const el = document.createElement('div');
     el.className = `item item-${kind}`;
     el.style.width = `${size}px`;
-    el.style.height = kind === 'seed' ? '29px' : `${size}px`;
-    el.innerHTML = kind === 'seed'
-      ? '<svg viewBox="0 0 20 32" aria-hidden="true"><use href="#seedS"/></svg>'
-      : '<svg viewBox="0 0 40 40" aria-hidden="true"><use href="#dustS"/></svg>';
+    el.style.height = `${food ? food.h : size}px`;
+    el.innerHTML =
+      kind === 'dust' ? '<svg viewBox="0 0 40 40" aria-hidden="true"><use href="#dustS"/></svg>'
+      : kind === 'seed' ? '<svg viewBox="0 0 20 32" aria-hidden="true"><use href="#seedS"/></svg>'
+      : kind === 'pellet' ? pelletSvg()
+      : noodleSvg();
     itemsLayer.appendChild(el);
     const speed = current.speed * speedScale;
     items.push({
@@ -365,7 +409,7 @@ export const startGame = (stage: HTMLElement, options: GameOptions) => {
       amp: kind === 'dust' ? rand(10, 20) : 0,
       freq: rand(1.6, 2.6),
       phase: rand(0, Math.PI * 2),
-      spin: kind === 'dust' ? rand(-40, 40) : rand(-140, 140),
+      spin: kind === 'dust' ? rand(-40, 40) : kind === 'noodle' ? rand(-60, 60) : rand(-140, 140),
       angle: rand(0, 360),
       size,
       el
@@ -403,7 +447,9 @@ export const startGame = (stage: HTMLElement, options: GameOptions) => {
   const stepSpray = (now: number) => {
     if (!spray) {
       if (now < nextSprayAt) return;
-      if (soot >= 2) {
+      if (vacuum) {
+        nextSprayAt = now + 3000;
+      } else if (soot >= 2) {
         startSpray(now);
         nextSprayAt = now + rand(30000, 45000);
       } else {
@@ -430,14 +476,116 @@ export const startGame = (stage: HTMLElement, options: GameOptions) => {
     }
   };
 
-  const setLives = (value: number) => {
-    lives = clamp(value, 0, MAX_LIVES);
-    feathers.forEach((icon, index) => icon.classList.toggle('off', index >= lives));
+  const startVacuum = (now: number) => {
+    const side = Math.random() < 0.5 ? 'left' : 'right';
+    const el = document.createElement('div');
+    el.className = `vacuum from-${side}`;
+    el.innerHTML = `<div class="vacuum-body" style="transform-origin: ${(60 * VAC_S).toFixed(1)}px 0"><div class="vacuum-wind" style="left: ${(60 * VAC_S - 50).toFixed(1)}px; top: ${(244 * VAC_S).toFixed(1)}px"></div>${vacuumSvg('vac', VAC_W)}</div>`;
+    root.insertBefore(el, hud);
+    vacuum = { el, at: now, x: side === 'left' ? 64 : W - 64, y: -20, leaving: false, hum: bgm.hum() };
   };
-  setLives(lives);
+
+  // 청소기를 한 걸음 움직인다. 청소기에 맞아 체력이 다 떨어지면 true를 돌려준다.
+  const stepVacuum = (now: number, dt: number) => {
+    if (!vacuum) {
+      if (now < nextVacuumAt) return false;
+      if (spray) {
+        nextVacuumAt = now + 3000;
+      } else {
+        startVacuum(now);
+        nextVacuumAt = now + rand(25000, 35000);
+      }
+      return false;
+    }
+    const v = vacuum;
+    const t = now - v.at;
+    const center = birdCenter();
+    const top = 150;
+    // 솔 아래가 새 가운데보다 조금 위에 닿을 때까지 내려온다.
+    const low = center.y - 8;
+    if (!v.leaving && t >= VACUUM_DOWN_MS) v.leaving = true;
+    if (v.leaving) {
+      v.y -= 360 * dt;
+    } else if (t < VACUUM_IN_MS) {
+      const k = t / VACUUM_IN_MS;
+      v.y = -20 + (top + 20) * (1 - (1 - k) * (1 - k));
+    } else {
+      v.y = top + (low - top) * ((t - VACUUM_IN_MS) / (VACUUM_DOWN_MS - VACUUM_IN_MS));
+      v.x += clamp(center.x - v.x, -1, 1) * 26 * dt;
+    }
+    v.el.style.transform = `translate(${(v.x - 60 * VAC_S).toFixed(1)}px, ${(v.y - 244 * VAC_S).toFixed(1)}px)`;
+    if (v.y - 244 * VAC_S < -160) {
+      v.hum.stop();
+      v.el.remove();
+      vacuum = null;
+      return false;
+    }
+    if (v.leaving) {
+      v.hum.level(0);
+      return false;
+    }
+    // 바람: 솔 아래 150px 안, 좌우 80px 안이면 새가 솔 쪽으로 끌려간다.
+    const dx = v.x - center.x;
+    const below = center.y - v.y;
+    const inWind = below > -30 && below < 150 && Math.abs(dx) < 80;
+    if (inWind) angularVelocity += Math.sign(dx) * 1.5 * (1 - Math.max(0, below) / 150) * dt;
+    v.hum.level(inWind ? 1 : 0.4);
+    // 솔 바로 아래의 먼지는 빨려 들어간다.
+    for (let i = items.length - 1; i >= 0; i -= 1) {
+      const item = items[i];
+      if (item.kind === 'dust' && !item.flung && Math.abs(item.x - v.x) < 46 && item.y > v.y - 10 && item.y < v.y + 60) removeItem(i);
+    }
+    // 솔에 닿으면 깎이고, 청소기는 물러간다.
+    if (Math.abs(dx) < 40 && Math.abs(below) < 28 && now > hitCooldownUntil) {
+      v.leaving = true;
+      if (takeHit(now, VACUUM_DAMAGE)) {
+        die(now);
+        return true;
+      }
+    }
+    return false;
+  };
+
+  const setHp = (value: number) => {
+    hp = clamp(Math.round(value), 0, MAX_HP);
+    hpFill.setAttribute('stroke-dasharray', `${((HP_CIRC * hp) / MAX_HP).toFixed(1)} ${HP_CIRC.toFixed(1)}`);
+    hpNum.textContent = String(hp);
+    hpBox.classList.toggle('low', hp <= LOW_HP);
+  };
+  setHp(hp);
+  // 체력이 바뀔 때 고리가 한 번 움찔하거나 통통 튄다.
+  const pulseHp = (kind: 'hurt' | 'heal') => {
+    hpBox.classList.remove('hurt', 'heal');
+    void hpBox.offsetWidth;
+    hpBox.classList.add(kind);
+  };
+
+  // 먼지나 청소기에 맞았을 때. 체력이 다 떨어지면 true를 돌려준다.
+  const takeHit = (now: number, damage: number) => {
+    hitCooldownUntil = now + HIT_COOLDOWN_MS;
+    hurtUntil = now + FACE_MS;
+    bgm.sfx('hit');
+    bgm.stumble();
+    // 가끔 모란앵무가 '삐빅' 운다.
+    if (Math.random() < 0.5) bgm.sfx('chirp');
+    bird.dataset.fx = 'dust';
+    window.setTimeout(() => { if (bird.dataset.fx === 'dust') bird.dataset.fx = ''; }, 600);
+    setHp(hp - damage);
+    pulseHp('hurt');
+    soot = Math.min(5, soot + 1);
+    bird.style.setProperty('--soot', String(soot * 0.06));
+    return hp <= 0;
+  };
+
+  const die = (now: number) => {
+    score = Math.floor(height * 2 + avoided * 15 + bonus);
+    render(now, false);
+    finish(now);
+  };
 
   const finish = (now: number) => {
     ended = true;
+    vacuum?.hum.stop();
     bgm.sfx('over');
     cancelAnimationFrame(raf);
     root.classList.add('paused');
@@ -568,6 +716,7 @@ export const startGame = (stage: HTMLElement, options: GameOptions) => {
 
     if (now >= nextSpawnAt) spawn(now, elapsedSec);
     stepSpray(now);
+    if (stepVacuum(now, dt)) return;
 
     const center = birdCenter();
     const magnetRange = ch.magnet;
@@ -603,7 +752,7 @@ export const startGame = (stage: HTMLElement, options: GameOptions) => {
         item.x = item.x0 + item.amp * Math.sin(elapsedSec * item.freq + item.phase);
         const dy = center.y - item.y;
         if (dy > 0 && dy < 170 && Math.abs(item.x - center.x) < 70) threat = true;
-      } else if (magnetRange > 0) {
+      } else if (magnetRange > 0 && item.kind === 'seed') {
         const dx = center.x - item.x;
         const dy = center.y - item.y;
         const dist = Math.hypot(dx, dy);
@@ -614,33 +763,23 @@ export const startGame = (stage: HTMLElement, options: GameOptions) => {
       }
       item.el.style.transform = `translate(${item.x - item.size / 2}px, ${item.y - item.size / 2}px) rotate(${item.angle}deg)`;
 
-      const hitRange = (item.kind === 'seed' ? 10 : item.size * 0.38) + 20;
+      const hitRange = (item.kind === 'dust' ? item.size * 0.38 : 12) + 20;
       if (Math.hypot(item.x - center.x, item.y - center.y) < hitRange) {
-        if (item.kind === 'seed') {
+        if (item.kind !== 'dust') {
+          const food = FOOD[item.kind];
           removeItem(i);
-          bonus += 120;
-          setLives(lives + 1);
+          bonus += food.bonus;
+          setHp(hp + food.heal);
+          pulseHp('heal');
           bgm.sfx('seed');
-          happyUntil = now + FACE_MS;
+          // 국수 생면은 가장 반가워서 조금 더 오래 웃는다.
+          happyUntil = now + (item.kind === 'noodle' ? FACE_MS * 2 : FACE_MS);
           continue;
         }
         if (now > startAt + SAFE_START_MS && now > hitCooldownUntil) {
           removeItem(i);
-          hitCooldownUntil = now + HIT_COOLDOWN_MS;
-          hurtUntil = now + FACE_MS;
-          bgm.sfx('hit');
-          bgm.stumble();
-          // 가끔 모란앵무가 '삐빅' 운다.
-          if (Math.random() < 0.5) bgm.sfx('chirp');
-          bird.dataset.fx = 'dust';
-          window.setTimeout(() => { if (bird.dataset.fx === 'dust') bird.dataset.fx = ''; }, 600);
-          setLives(lives - 1);
-          soot = Math.min(5, soot + 1);
-          bird.style.setProperty('--soot', String(soot * 0.06));
-          if (lives <= 0) {
-            score = Math.floor(height * 2 + avoided * 15 + bonus);
-            render(now, false);
-            finish(now);
+          if (takeHit(now, DUST_DAMAGE)) {
+            die(now);
             return;
           }
           continue;
@@ -676,6 +815,7 @@ export const startGame = (stage: HTMLElement, options: GameOptions) => {
   return {
     destroy: () => {
       ended = true;
+      vacuum?.hum.stop();
       cancelAnimationFrame(raf);
       window.removeEventListener('keydown', onKeyDown);
       window.removeEventListener('keyup', onKeyUp);

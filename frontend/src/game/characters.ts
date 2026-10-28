@@ -7,7 +7,8 @@ export type Character = {
   prefix: 'mg' | 'bo';
   // 초마다 오르는 높이
   climbRate: number;
-  lives: number;
+  // 처음 체력. 0이 되면 끝나고, 100까지 찬다.
+  hp: number;
   // 줄 흔들기. 손을 대면 drive만큼 밀고, stiffness가 가운데로 되돌리고, damping이 잦아들게 한다.
   drive: number;
   stiffness: number;
@@ -37,7 +38,7 @@ export const CHARACTERS: Record<CharacterKey, Character> = {
     name: '몽글이',
     prefix: 'mg',
     climbRate: 3,
-    lives: 4,
+    hp: 80,
     drive: 3.6,
     stiffness: 6,
     damping: 4.2,
@@ -56,7 +57,7 @@ export const CHARACTERS: Record<CharacterKey, Character> = {
     name: '보리',
     prefix: 'bo',
     climbRate: 3.4,
-    lives: 3,
+    hp: 60,
     // 몽글이보다 덜 잡히고 조금 지나치지만, 휘둘려서 못 피할 만큼은 아니게 맞춘다.
     drive: 3.5,
     stiffness: 5.4,

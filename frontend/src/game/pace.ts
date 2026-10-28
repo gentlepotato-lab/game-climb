@@ -26,7 +26,7 @@ export const pace = (elapsedSec: number) => {
     speed: 70 + 150 * level,
     // 다음 것이 떨어질 때까지(ms)
     spawnMs: 1200 - 820 * level,
-    // 해바라기씨가 나올 확률. 빨라질수록 조금 드물다.
-    seedChance: 0.14 - 0.05 * level
+    // 떨어지는 것이 먹을 것(펠렛, 해바라기씨, 국수 생면)일 확률. 빨라질수록 조금 드물다.
+    foodChance: 0.3 - 0.08 * level
   };
 };
