@@ -28,6 +28,8 @@ const VACUUM_DOWN_MS = 6200;
 // 청소기 그림(viewBox 130x250)을 가로 78px로 그린다. 바닥 솔 아래 가운데가 (60, 244)다.
 const VAC_W = 78;
 const VAC_S = VAC_W / 130;
+// 들어오기 전 솔 아래의 높이. 그림 전체가 화면 위 밖에 숨는다.
+const VAC_START_Y = -10;
 const SAFE_START_MS = 1500;
 const HIT_COOLDOWN_MS = 700;
 const FACE_MS = 700;
@@ -242,7 +244,7 @@ export const startGame = (stage: HTMLElement, options: GameOptions) => {
   // 청소기. 가끔 화면 위 양옆 중 한쪽에서 나와 새 쪽으로 천천히 다가가며 내려온다.
   // 바닥 솔 아래 바람에 들어가면 새가 그쪽으로 끌려가고, 솔에 닿으면 체력이 깎인다. 지나가는 먼지는 빨아들인다.
   let nextVacuumAt = startAt + rand(18000, 25000);
-  let vacuum: { el: HTMLDivElement; at: number; x: number; y: number; leaving: boolean; hum: Hum } | null = null;
+  let vacuum: { el: HTMLDivElement; at: number; x: number; y: number; leaving: boolean; hum: Hum; loud: boolean | null } | null = null;
   let skillReadyAt = startAt;
   let frontUntil = 0;
   let nextFrontAt = startAt + rand(4000, 7000);
@@ -482,7 +484,7 @@ export const startGame = (stage: HTMLElement, options: GameOptions) => {
     el.className = `vacuum from-${side}`;
     el.innerHTML = `<div class="vacuum-body" style="transform-origin: ${(60 * VAC_S).toFixed(1)}px 0"><div class="vacuum-wind" style="left: ${(60 * VAC_S - 50).toFixed(1)}px; top: ${(244 * VAC_S).toFixed(1)}px"></div>${vacuumSvg('vac', VAC_W)}</div>`;
     root.insertBefore(el, hud);
-    vacuum = { el, at: now, x: side === 'left' ? 64 : W - 64, y: -20, leaving: false, hum: bgm.hum() };
+    vacuum = { el, at: now, x: side === 'left' ? 64 : W - 64, y: VAC_START_Y, leaving: false, hum: bgm.hum(), loud: null };
   };
 
   // 청소기를 한 걸음 움직인다. 청소기에 맞아 체력이 다 떨어지면 true를 돌려준다.
@@ -501,27 +503,30 @@ export const startGame = (stage: HTMLElement, options: GameOptions) => {
     const t = now - v.at;
     const center = birdCenter();
     const top = 150;
-    // 솔 아래가 새 가운데보다 조금 위에 닿을 때까지 내려온다.
-    const low = center.y - 8;
+    // 솔 아래가 가만히 매달린 새의 가운데보다 조금 위에 닿을 때까지 내려온다.
+    // 흔들리는 새의 높이를 그대로 따라가면 청소기가 위아래로 출렁이므로, 매달린 자리를 기준으로 삼는다.
+    const low = pivotY + ropeLength - 38;
     if (!v.leaving && t >= VACUUM_DOWN_MS) v.leaving = true;
     if (v.leaving) {
       v.y -= 360 * dt;
     } else if (t < VACUUM_IN_MS) {
       const k = t / VACUUM_IN_MS;
-      v.y = -20 + (top + 20) * (1 - (1 - k) * (1 - k));
+      v.y = VAC_START_Y + (top - VAC_START_Y) * (1 - (1 - k) * (1 - k));
     } else {
       v.y = top + (low - top) * ((t - VACUUM_IN_MS) / (VACUUM_DOWN_MS - VACUUM_IN_MS));
       v.x += clamp(center.x - v.x, -1, 1) * 26 * dt;
     }
     v.el.style.transform = `translate(${(v.x - 60 * VAC_S).toFixed(1)}px, ${(v.y - 244 * VAC_S).toFixed(1)}px)`;
-    if (v.y - 244 * VAC_S < -160) {
+    // 다 올라가 화면 밖으로 나갔을 때만 치운다. 들어오는 중에는 아직 화면 밖이어도 치우지 않는다.
+    if (v.leaving && v.y - 244 * VAC_S < -160) {
       v.hum.stop();
       v.el.remove();
       vacuum = null;
       return false;
     }
     if (v.leaving) {
-      v.hum.level(0);
+      if (v.loud !== false) v.hum.level(0);
+      v.loud = false;
       return false;
     }
     // 바람: 솔 아래 150px 안, 좌우 80px 안이면 새가 솔 쪽으로 끌려간다.
@@ -529,7 +534,9 @@ export const startGame = (stage: HTMLElement, options: GameOptions) => {
     const below = center.y - v.y;
     const inWind = below > -30 && below < 150 && Math.abs(dx) < 80;
     if (inWind) angularVelocity += Math.sign(dx) * 1.5 * (1 - Math.max(0, below) / 150) * dt;
-    v.hum.level(inWind ? 1 : 0.4);
+    // 소리는 바람에 들고 날 때만 바꾼다. 프레임마다 바꾸면 소리 일정이 쌓여 끊긴다.
+    if (v.loud !== inWind) v.hum.level(inWind ? 1 : 0.4);
+    v.loud = inWind;
     // 솔 바로 아래의 먼지는 빨려 들어간다.
     for (let i = items.length - 1; i >= 0; i -= 1) {
       const item = items[i];
