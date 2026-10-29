@@ -432,6 +432,15 @@ input {
   transform-origin: 60px 150px;
 }
 
+/* 웃는 눈과 혀는 평소에 숨기고, 고른 친구가 예쁜 짓을 할 때만 잠깐 보인다.
+   고르지 않은 친구는 예쁜 짓 애니메이션이 없어서, 숨기지 않으면 뜬 눈 위에 웃는 눈이 겹친다. */
+.portrait .eyesH,
+.portrait .tongue,
+.perch-pose .eyesH,
+.perch-pose .tongue {
+  opacity: 0;
+}
+
 .pose-mg {
   animation: mgBob 2.2s ease-in-out infinite;
 }
