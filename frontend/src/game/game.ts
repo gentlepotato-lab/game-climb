@@ -478,13 +478,19 @@ export const startGame = (stage: HTMLElement, options: GameOptions) => {
     }
   };
 
+  const placeVacuum = (v: { el: HTMLDivElement; x: number; y: number }) => {
+    v.el.style.transform = `translate(${(v.x - 60 * VAC_S).toFixed(1)}px, ${(v.y - 244 * VAC_S).toFixed(1)}px)`;
+  };
+
   const startVacuum = (now: number) => {
     const side = Math.random() < 0.5 ? 'left' : 'right';
     const el = document.createElement('div');
     el.className = `vacuum from-${side}`;
     el.innerHTML = `<div class="vacuum-body" style="transform-origin: ${(60 * VAC_S).toFixed(1)}px 0"><div class="vacuum-wind" style="left: ${(60 * VAC_S - 50).toFixed(1)}px; top: ${(244 * VAC_S).toFixed(1)}px"></div>${vacuumSvg('vac', VAC_W)}</div>`;
-    root.insertBefore(el, hud);
     vacuum = { el, at: now, x: side === 'left' ? 64 : W - 64, y: VAC_START_Y, leaving: false, hum: bgm.hum(), loud: null };
+    // 자리를 먼저 잡고 붙인다. 자리 없이 붙이면 한 프레임 동안 왼쪽 위 모서리에 보였다가 제자리로 튄다.
+    placeVacuum(vacuum);
+    root.insertBefore(el, hud);
   };
 
   // 청소기를 한 걸음 움직인다. 청소기에 맞아 체력이 다 떨어지면 true를 돌려준다.
@@ -516,7 +522,7 @@ export const startGame = (stage: HTMLElement, options: GameOptions) => {
       v.y = top + (low - top) * ((t - VACUUM_IN_MS) / (VACUUM_DOWN_MS - VACUUM_IN_MS));
       v.x += clamp(center.x - v.x, -1, 1) * 26 * dt;
     }
-    v.el.style.transform = `translate(${(v.x - 60 * VAC_S).toFixed(1)}px, ${(v.y - 244 * VAC_S).toFixed(1)}px)`;
+    placeVacuum(v);
     // 다 올라가 화면 밖으로 나갔을 때만 치운다. 들어오는 중에는 아직 화면 밖이어도 치우지 않는다.
     if (v.leaving && v.y - 244 * VAC_S < -160) {
       v.hum.stop();
