@@ -9,6 +9,12 @@
   --mg-off: #d9d4e0;
   --bo: #e0a419;
   --bo-off: #ecdcc0;
+  --mo: #5e9f3c;
+  --mo-off: #dfe8d2;
+  --bn: #3f9071;
+  --bn-off: #d6e8de;
+  --md: #2f8f88;
+  --md-off: #d3e9e6;
 }
 
 * {
@@ -237,11 +243,118 @@ input {
   --off: var(--bo-off);
 }
 
+.card-mo {
+  --on: var(--mo);
+  --off: var(--mo-off);
+}
+
+.card-bn {
+  --on: var(--bn);
+  --off: var(--bn-off);
+}
+
+.card-md {
+  --on: var(--md);
+  --off: var(--md-off);
+}
+
+/* 고른 친구의 설명. 늘 골라진 모습으로 보인다. */
+.pick-card {
+  background: var(--paper);
+  border-color: var(--ink);
+  box-shadow: 0 10px 24px rgba(30, 20, 40, 0.28);
+  cursor: default;
+}
+
+.pick-card .card-note {
+  gap: 0;
+  line-height: 1.4;
+  word-break: keep-all;
+}
+
+/* 설명이 길든 짧든 카드 높이가 같도록, 한 줄 소개는 한 줄로, 필살기와 성격은 세 줄 자리로 둔다. */
+.pick-card .card-title span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.pick-card .card-note {
+  height: 4.2em;
+}
+
+/* 횃대. 다섯 친구가 일렬로 앉고, 고른 친구가 살짝 앞으로 나와 예쁜 짓을 한다. */
+.perch {
+  position: relative;
+  margin: auto -6px 4px;
+}
+
+.perch-branch {
+  position: absolute;
+  left: -16px;
+  right: -16px;
+  top: 64px;
+  width: calc(100% + 32px);
+  height: 20px;
+  filter: drop-shadow(0 4px 6px rgba(40, 20, 20, 0.3));
+}
+
+.perch-birds {
+  position: relative;
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 2px;
+}
+
+.perch-bird {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 20px;
+  padding: 0;
+  border: 0;
+  background: none;
+  cursor: pointer;
+}
+
+.perch-pose {
+  position: relative;
+  display: block;
+  width: 56px;
+  height: 75px;
+  transition: transform 0.25s ease-out;
+}
+
+.perch-anim {
+  display: block;
+}
+
+.perch-pose svg {
+  width: 56px;
+  height: 75px;
+  overflow: visible;
+}
+
+.perch-bird[aria-pressed='true'] .perch-pose {
+  transform: translateY(-6px) scale(1.14);
+  filter: drop-shadow(0 6px 10px rgba(30, 20, 40, 0.35));
+}
+
+.perch-name {
+  font-size: 12px;
+  color: var(--ink);
+  opacity: 0.6;
+}
+
+.perch-bird[aria-pressed='true'] .perch-name {
+  opacity: 0.95;
+  font-weight: 700;
+}
+
 .field {
   display: flex;
   flex-direction: column;
   gap: 4px;
-  flex: 1;
+  flex: none;
   min-width: 0;
   color: #fff8f0;
   font-size: 13px;
@@ -282,33 +395,40 @@ input {
 }
 
 .start .primary {
-  margin-top: auto;
+  margin-top: 2px;
+  flex: none;
 }
 
 .hint {
   margin: 0;
   text-align: center;
   font-size: 12px;
-  color: rgba(43, 34, 51, 0.7);
+  color: rgba(255, 248, 240, 0.75);
 }
 
 /* 고르는 화면의 예쁜 짓. 몽글이는 느긋하게, 보리는 정신없이 */
 .portrait .fwl,
 .portrait .fwr,
 .portrait .tilt,
+.perch-pose .fwl,
+.perch-pose .fwr,
+.perch-pose .tilt,
 .bird .tilt {
   transform-box: view-box;
 }
 
-.portrait .fwl {
+.portrait .fwl,
+.perch-pose .fwl {
   transform-origin: 31px 82px;
 }
 
-.portrait .fwr {
+.portrait .fwr,
+.perch-pose .fwr {
   transform-origin: 89px 82px;
 }
 
-.portrait .tilt {
+.portrait .tilt,
+.perch-pose .tilt {
   transform-origin: 60px 150px;
 }
 
@@ -318,6 +438,18 @@ input {
 
 .pose-bo {
   animation: boHop 1.1s ease-in-out infinite;
+}
+
+.pose-mo {
+  animation: mgBob 3.4s ease-in-out infinite;
+}
+
+.pose-bn {
+  animation: boHop 0.95s ease-in-out infinite;
+}
+
+.pose-md {
+  animation: mgBob 2.6s ease-in-out infinite;
 }
 
 .pose-mg .tilt {
@@ -361,6 +493,67 @@ input {
   animation: boFlutR 4s linear infinite;
 }
 
+/* 모모는 아주 느긋하게, 번개는 빠릿빠릿하게 통통, 막둥이는 순하게 */
+.pose-mo .tilt {
+  animation: mgPoseTilt 12s ease-in-out infinite;
+}
+
+.pose-mo .eyesH {
+  animation: mgSmile 12s infinite;
+}
+
+.pose-mo .eyesO {
+  animation: mgSmileO 12s infinite;
+}
+
+.pose-mo .fwl {
+  animation: mgFlutL 12s ease-in-out infinite;
+}
+
+.pose-mo .fwr {
+  animation: mgFlutR 12s ease-in-out infinite;
+}
+
+.pose-bn .tilt {
+  animation: tiltBo 1.5s ease-in-out infinite;
+}
+
+.pose-bn .eyesH {
+  animation: boSmile 3.2s infinite;
+}
+
+.pose-bn .eyesO {
+  animation: boSmileO 3.2s infinite;
+}
+
+.pose-bn .fwl {
+  animation: boFlutL 3.2s linear infinite;
+}
+
+.pose-bn .fwr {
+  animation: boFlutR 3.2s linear infinite;
+}
+
+.pose-md .tilt {
+  animation: mgPoseTilt 9s ease-in-out infinite;
+}
+
+.pose-md .eyesH {
+  animation: mgSmile 9s infinite;
+}
+
+.pose-md .eyesO {
+  animation: mgSmileO 9s infinite;
+}
+
+.pose-md .fwl {
+  animation: mgFlutL 9s ease-in-out infinite;
+}
+
+.pose-md .fwr {
+  animation: mgFlutR 9s ease-in-out infinite;
+}
+
 .blinkO {
   animation: blinkO 3.8s infinite;
 }
@@ -386,6 +579,24 @@ input {
   --feather: #b9c2e8;
   --hp-a: #e3e7ff;
   --hp-b: #a4afee;
+}
+
+.game-mo {
+  --feather: #9fd77a;
+  --hp-a: #dcf2bf;
+  --hp-b: #7fbf4e;
+}
+
+.game-bn {
+  --feather: #86c8a0;
+  --hp-a: #d8f0dc;
+  --hp-b: #64ae80;
+}
+
+.game-md {
+  --feather: #88d2c9;
+  --hp-a: #d5f2ec;
+  --hp-b: #45a59f;
 }
 
 .game-bo {
@@ -606,7 +817,6 @@ input {
 .bird[data-face='happy'] .face-happy,
 .bird[data-face='hurt'] .face-hurt,
 .bird[data-face='surprise'] .face-surprise,
-.bird[data-face='glare'] .face-glare,
 .bird[data-face='derpy'] .face-derpy,
 .bird[data-fx='dust'] .fx-dust,
 .bird[data-fx='peck'] .fx-peck {
@@ -638,6 +848,31 @@ input {
 
 .bo-climb .torso {
   animation: boTorso 0.82s linear infinite;
+}
+
+/* 모모는 느릿하게, 번개는 빠릿하게, 막둥이는 고르게 오른다. */
+.mo-climb .torso {
+  animation: mgTorso 1.35s ease-in-out infinite;
+}
+
+.bn-climb .torso {
+  animation: mgTorso 0.74s ease-in-out infinite;
+}
+
+.md-climb .torso {
+  animation: mgTorso 1.1s ease-in-out infinite;
+}
+
+.mo-flap .wing {
+  animation: mgFlap 0.56s ease-in-out infinite;
+}
+
+.bn-flap .wing {
+  animation: boFlap 0.5s linear infinite;
+}
+
+.md-flap .wing {
+  animation: mgFlap 0.46s ease-in-out infinite;
 }
 
 .mg-flap .wing {
@@ -1102,6 +1337,13 @@ input {
   touch-action: none;
 }
 
+.skill-long {
+  padding: 0 8px;
+  font-size: 11px;
+  line-height: 1.15;
+  word-break: keep-all;
+}
+
 .skill.ready {
   box-shadow: 0 0 0 3px rgba(255, 248, 240, 0.6), 0 6px 14px rgba(30, 20, 40, 0.3);
 }
@@ -1192,6 +1434,65 @@ input {
 .bird .wind3 {
   animation-delay: 0.24s;
 }
+
+/* 모모는 몸이 흐려지고 둥실 뜬다. 번개는 지나간 자리에 잔상이 남는다. 막둥이 둘레에는 바람 고리가 돈다. */
+.bird .fx-ghost,
+.bird .fx-repel {
+  display: none;
+}
+
+.skill-ghost .bird .fx-ghost,
+.skill-repel .bird .fx-repel {
+  display: inline;
+}
+
+.skill-ghost .bird {
+  opacity: 0.42;
+  filter: drop-shadow(0 0 10px rgba(255, 255, 255, 0.95));
+}
+
+.skill-ghost .bird-flip {
+  animation: ghostFloat 1s ease-in-out;
+}
+
+.afterimages {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+
+.afterimage {
+  position: absolute;
+  animation: afterFade 0.32s ease-out forwards;
+}
+
+.afterimage .bird {
+  filter: brightness(1.15) saturate(1.3);
+}
+
+.skill-dash .bird .wing {
+  animation: boBlast 0.12s ease-in-out infinite;
+}
+
+.bird .repel-ring {
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: repelSpin 2.2s linear infinite;
+}
+
+.bird .repel-ring2 {
+  animation-direction: reverse;
+  animation-duration: 1.6s;
+}
+
+.skill-repel .bird .fx-repel {
+  animation: repelIn 0.25s ease-out;
+}
+
+@keyframes ghostFloat { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-6px); } }
+@keyframes afterFade { from { opacity: 0.45; } to { opacity: 0; } }
+@keyframes repelSpin { to { transform: rotate(360deg); } }
+@keyframes repelIn { from { opacity: 0; } to { opacity: 1; } }
 
 .item-flung svg {
   filter: brightness(1.25) drop-shadow(0 0 4px rgba(170, 185, 255, 0.9));

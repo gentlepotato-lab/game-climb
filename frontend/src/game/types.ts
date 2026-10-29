@@ -1,4 +1,4 @@
-export type CharacterKey = 'mongle' | 'bori';
+export type CharacterKey = 'mongle' | 'bori' | 'momo' | 'beongae' | 'makdung';
 
 export type GameResult = {
   character: CharacterKey;

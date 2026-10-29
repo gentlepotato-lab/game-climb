@@ -39,6 +39,14 @@ const READY_MS = 3000;
 const SKILL_MS = 1000;
 // 몽글이가 먼지를 튕겨 내는 막의 반지름(px)
 const GUARD_RANGE = 70;
+// 막둥이 둘레에서 먼지가 휘어 비켜 가기 시작하는 거리(px)
+const REPEL_RANGE = 130;
+// 번개가 스스슥 움직일 때 다음 자리를 고르는 간격(ms)과 잔상을 남기는 간격(ms)
+const DASH_PICK_MS = 110;
+// 스스슥은 제자리 둘레에서만 오간다. 처음 자리에서 좌우로 이만큼(px)까지 간다.
+const DASH_SPAN = 30;
+const DASH_TRAIL_MS = 55;
+const SKILL_SFX = { guard: 'guard', blast: 'blast', ghost: 'ghost', dash: 'dash', repel: 'repel' } as const;
 // 분무기 한 번이 물방울까지 다 사라지는 시간과, 두 번 뿌리는 때(ms). 뿌리는 때는 styles.css의 sprayArm과 맞춘다.
 const SPRAY_MS = 4600;
 const SPRAY_PUFFS_MS = [620, 1120];
@@ -67,7 +75,7 @@ type Item = {
   flung?: { vx: number; vy: number; life: number };
 };
 
-type Face = 'open' | 'effort' | 'happy' | 'hurt' | 'surprise' | 'glare' | 'derpy';
+type Face = 'open' | 'effort' | 'happy' | 'hurt' | 'surprise' | 'derpy';
 
 // 먼지 크기. 작은 것이 35%, 중간이 45%, 큰 것이 20%다. 클수록 닿는 범위도 넓다.
 const dustSize = () => {
@@ -164,6 +172,7 @@ export const startGame = (stage: HTMLElement, options: GameOptions) => {
   <g class="rope-back"><path class="rope-line"/><path class="rope-beads-edge"/><path class="rope-beads"/></g>
   <path class="rope-line"/><path class="rope-beads-edge"/><path class="rope-beads"/><path class="rope-stops-edge"/><path class="rope-stops"/>
 </svg>
+<div class="afterimages"></div>
 <div class="rig" style="left: ${pivotX}px; top: ${pivotY}px">
   <div class="bird-pos" style="left: ${-GRIP_X}px; top: ${ropeLength - GRIP_Y}px; width: ${BIRD_W}px; height: ${BIRD_H}px; transform-origin: ${GRIP_X}px ${GRIP_Y}px">
     <div class="bird-flip" style="transform-origin: ${GRIP_X}px 50%"><svg class="bird ${ch.prefix}-climb" viewBox="0 0 120 160" data-face="open" data-view="front" data-fx="" aria-hidden="true">${hangingBird(ch.prefix)}</svg></div>
@@ -183,7 +192,7 @@ export const startGame = (stage: HTMLElement, options: GameOptions) => {
 <div class="countdown" aria-live="polite"><span class="countdown-label nw">READY</span><strong class="countdown-count">3</strong></div>
 <div class="controls">
   <div class="pad nw">◀ 끌어서 줄 흔들기 ▶</div>
-  <button class="skill nw" type="button">${ch.skillLabel}</button>
+  <button class="skill${ch.skillLabel.length > 3 ? ' skill-long' : ' nw'}" type="button">${ch.skillLabel}</button>
 </div>`;
   stage.appendChild(root);
 
@@ -192,6 +201,7 @@ export const startGame = (stage: HTMLElement, options: GameOptions) => {
   const rig = $<HTMLDivElement>('.rig');
   const flip = $<HTMLDivElement>('.bird-flip');
   const birdPos = $<HTMLDivElement>('.bird-pos');
+  const afterLayer = $<HTMLDivElement>('.afterimages');
   const ropePaths = Array.from(root.querySelectorAll<SVGPathElement>('.rope path'));
   const ropeBeads = Array.from(root.querySelectorAll<SVGPathElement>('.rope-beads, .rope-beads-edge, .rope-stops, .rope-stops-edge'));
   const bird = $<SVGSVGElement>('.bird');
@@ -247,7 +257,12 @@ export const startGame = (stage: HTMLElement, options: GameOptions) => {
   let vacuum: { el: HTMLDivElement; at: number; x: number; y: number; leaving: boolean; hum: Hum; loud: boolean | null } | null = null;
   let skillReadyAt = startAt;
   let frontUntil = 0;
-  let nextFrontAt = startAt + rand(4000, 7000);
+  let nextFrontAt = startAt + rand(ch.frontEveryMs[0], ch.frontEveryMs[1]);
+  // 번개의 스스슥. 고른 자리(각도)와 다음에 고를 때, 다음 잔상을 남길 때
+  let dashTarget = 0;
+  let dashOrigin = 0;
+  let nextDashPickAt = 0;
+  let nextTrailAt = 0;
   let derpyUntil = 0;
 
   // 손 입력. 보리는 엇박자라서 조금 늦게, 그것도 들쭉날쭉하게 먹힌다.
@@ -346,7 +361,10 @@ export const startGame = (stage: HTMLElement, options: GameOptions) => {
     skillUntil = now + SKILL_MS;
     skillReadyAt = now + ch.skillCooldownMs;
     root.classList.add(`skill-${ch.skill}`);
-    bgm.sfx(ch.skill === 'guard' ? 'guard' : 'blast');
+    bgm.sfx(SKILL_SFX[ch.skill]);
+    nextDashPickAt = 0;
+    dashOrigin = angle;
+    dashTarget = angle;
     window.setTimeout(() => root.classList.remove(`skill-${ch.skill}`), SKILL_MS);
   };
 
@@ -549,7 +567,8 @@ export const startGame = (stage: HTMLElement, options: GameOptions) => {
       if (item.kind === 'dust' && !item.flung && Math.abs(item.x - v.x) < 46 && item.y > v.y - 10 && item.y < v.y + 60) removeItem(i);
     }
     // 솔에 닿으면 깎이고, 청소기는 물러간다.
-    if (Math.abs(dx) < 40 && Math.abs(below) < 28 && now > hitCooldownUntil) {
+    const ghosting = now < skillUntil && ch.skill === 'ghost';
+    if (!ghosting && Math.abs(dx) < 40 && Math.abs(below) < 28 && now > hitCooldownUntil) {
       v.leaving = true;
       if (takeHit(now, VACUUM_DAMAGE)) {
         die(now);
@@ -557,6 +576,43 @@ export const startGame = (stage: HTMLElement, options: GameOptions) => {
       }
     }
     return false;
+  };
+
+  // 스스슥. 처음 자리 둘레 다섯 군데 가운데 위에서 먼지가 가장 적게 오는 곳을 고르고 재빨리 옮겨 간다.
+  // 같은 곳에 머물지 않고 1초 동안 제자리에서 좌우로 잽싸게 오간다. 지나간 자리에 잔상이 남는다.
+  const stepDash = (now: number, dt: number) => {
+    if (now >= nextDashPickAt) {
+      nextDashPickAt = now + DASH_PICK_MS;
+      let best = dashTarget;
+      let bestScore = Infinity;
+      for (const k of [-1, -0.5, 0, 0.5, 1]) {
+        const a = clamp(dashOrigin + (k * DASH_SPAN) / ropeLength, -maxAngle, maxAngle);
+        const x = pivotX + ropeLength * Math.sin(a) + (facingRight ? -25 : 25);
+        const y = pivotY + ropeLength * Math.cos(a) - 30;
+        let score = Math.abs(a - dashTarget) < 1e-4 ? 0.4 : 0;
+        for (const item of items) {
+          if (item.kind !== 'dust' || item.flung) continue;
+          const dy = y - item.y;
+          if (dy > -30 && dy < 280 && Math.abs(item.x - x) < 56 + item.size * 0.3) score += 1 - Math.max(0, dy) / 280;
+        }
+        if (score < bestScore) {
+          bestScore = score;
+          best = a;
+        }
+      }
+      dashTarget = best;
+    }
+    const step = clamp((dashTarget - angle) * Math.min(1, dt * 14), -0.08, 0.08);
+    angle = clamp(angle + step, -maxAngle, maxAngle);
+    angularVelocity = step / Math.max(dt, 0.001);
+    if (now >= nextTrailAt) {
+      nextTrailAt = now + DASH_TRAIL_MS;
+      const trail = rig.cloneNode(true) as HTMLDivElement;
+      trail.classList.add('afterimage');
+      trail.style.transform = `rotate(${-angle}rad)`;
+      trail.addEventListener('animationend', () => trail.remove());
+      afterLayer.appendChild(trail);
+    }
   };
 
   const setHp = (value: number) => {
@@ -626,13 +682,14 @@ export const startGame = (stage: HTMLElement, options: GameOptions) => {
     ropeBeads.forEach((path) => path.setAttribute('stroke-dashoffset', beadOffset.toFixed(1)));
     birdPos.style.transform = `rotate(${-sway}rad)`;
 
-    let face: Face = Math.floor((now - startAt) / 1600) % 3 === 0 ? 'effort' : 'open';
+    let face: Face = ch.effortEvery > 0 && Math.floor((now - startAt) / 1600) % ch.effortEvery === 0 ? 'effort' : 'open';
     let view = 'side';
-    if (now < skillUntil) face = ch.skill === 'guard' ? 'glare' : 'effort';
+    // 몽글이, 보리, 번개는 안간힘을 쓰고, 모모와 막둥이는 차분한 얼굴 그대로다. 노려보거나 비웃는 얼굴은 쓰지 않는다.
+    if (now < skillUntil) face = ch.skill === 'ghost' || ch.skill === 'repel' ? 'open' : 'effort';
     else if (now < hurtUntil) face = 'hurt';
     else if (now < happyUntil) face = 'happy';
-    else if (ch.prefix === 'mg' && threat) face = 'glare';
-    else if (ch.prefix === 'bo' && Math.abs(angularVelocity) > 0.9) face = 'surprise';
+    else if (ch.alertOnThreat && threat) face = 'surprise';
+    else if (ch.surpriseSpeed > 0 && Math.abs(angularVelocity) > ch.surpriseSpeed) face = 'surprise';
     else if (now < frontUntil) view = 'front';
     else if (now < derpyUntil) face = 'derpy';
 
@@ -716,6 +773,7 @@ export const startGame = (stage: HTMLElement, options: GameOptions) => {
       angle = Math.sign(angle) * maxAngle;
       angularVelocity = -angularVelocity * ch.bounce;
     }
+    if (now < skillUntil && ch.skill === 'dash') stepDash(now, dt);
     // 새는 체인보다 늦게 따라온다. 출발할 때는 뒤로 처지고, 멈출 때는 앞으로 쏠린다.
     swayVelocity += (-sway * 70 - swayVelocity * 9 + accel * 3.5) * dt;
     sway = clamp(sway + swayVelocity * dt, -0.4, 0.4);
@@ -754,9 +812,18 @@ export const startGame = (stage: HTMLElement, options: GameOptions) => {
           fling(item, center, 560, 140);
           continue;
         }
-        if (Math.hypot(item.x - center.x, item.y - center.y) < GUARD_RANGE + item.size * 0.3) {
+        if (ch.skill === 'guard' && Math.hypot(item.x - center.x, item.y - center.y) < GUARD_RANGE + item.size * 0.3) {
           fling(item, center, 300, 220);
           continue;
+        }
+        // 막둥이 둘레에 들어온 먼지는 가까울수록 세게 옆으로 밀려 휘어 지나간다.
+        if (ch.skill === 'repel') {
+          const dx = item.x - center.x;
+          const d = Math.hypot(dx, item.y - center.y);
+          if (d < REPEL_RANGE) {
+            const dir = Math.sign(dx) || (item.phase > Math.PI ? 1 : -1);
+            item.x0 += dir * 340 * (1 - d / REPEL_RANGE) * dt;
+          }
         }
       }
       item.y += item.vy * dt;
@@ -789,7 +856,9 @@ export const startGame = (stage: HTMLElement, options: GameOptions) => {
           happyUntil = now + (item.kind === 'noodle' ? FACE_MS * 2 : FACE_MS);
           continue;
         }
-        if (now > startAt + SAFE_START_MS && now > hitCooldownUntil) {
+        // 유령인 모모는 먼지가 몸을 뚫고 지나가고, 막둥이의 먼지는 몸을 피해 미끄러지고, 스스슥 중인 번개는 날쌔게 비킨다.
+        const passing = skillOn && (ch.skill === 'ghost' || ch.skill === 'repel' || ch.skill === 'dash');
+        if (!passing && now > startAt + SAFE_START_MS && now > hitCooldownUntil) {
           removeItem(i);
           if (takeHit(now, DUST_DAMAGE)) {
             die(now);
@@ -807,9 +876,9 @@ export const startGame = (stage: HTMLElement, options: GameOptions) => {
     // 가만히 매달려 있으면 가끔 이쪽을 본다. 보리는 그 사이 두리번거리기도 한다.
     if (!threat && Math.abs(angularVelocity) < 0.2 && now >= nextFrontAt) {
       frontUntil = now + 1400;
-      nextFrontAt = now + (ch.prefix === 'mg' ? rand(6000, 9000) : rand(4000, 7000));
+      nextFrontAt = now + rand(ch.frontEveryMs[0], ch.frontEveryMs[1]);
     }
-    if (ch.prefix === 'bo' && !threat && Math.random() < dt * 0.15) derpyUntil = now + 900;
+    if (ch.derpyRate > 0 && !threat && Math.random() < dt * ch.derpyRate) derpyUntil = now + 900;
 
     score = Math.floor(height * 2 + avoided * 15 + bonus);
     render(now, threat);

@@ -9,7 +9,7 @@
 // 효과음도 같은 방식으로 그 자리에서 만든다. 소리 끄기를 함께 따른다.
 
 export type Track = 'select' | 'game';
-export type Sfx = 'tick' | 'go' | 'seed' | 'hit' | 'guard' | 'tink' | 'blast' | 'ready' | 'over' | 'pick' | 'chirp' | 'spray';
+export type Sfx = 'tick' | 'go' | 'seed' | 'hit' | 'guard' | 'tink' | 'blast' | 'ready' | 'over' | 'pick' | 'chirp' | 'spray' | 'ghost' | 'dash' | 'repel';
 
 // 청소기 소리. 켜 두는 동안 낮게 웅 하고, level로 가까움을 0에서 1까지 알려 준다.
 export type Hum = { level: (value: number) => void; stop: () => void };
@@ -461,6 +461,22 @@ class Bgm {
         this.call(t + 0.17, f * 1.15, 0.055, 0.11);
         break;
       }
+      case 'ghost':
+        // 유령. 바람처럼 스르르 흐려진다. 높은 음이 천천히 내려앉고, 옅은 바람이 깔린다.
+        this.tone('sine', hz('E6'), t, 0.12, 0.7, 0.07, hz('A5'));
+        this.tone('sine', hz('E6') * 1.007, t + 0.04, 0.12, 0.7, 0.05, hz('A5'));
+        this.whoosh(t, 0.8, 0.12, 'lowpass', 2600, 700);
+        break;
+      case 'dash':
+        // 스스슥. 짧은 바람 소리가 세 번 빠르게 스친다.
+        for (let k = 0; k < 3; k += 1) this.whoosh(t + k * 0.085, 0.09, 0.2, 'highpass', 2400 + k * 500, 4200);
+        break;
+      case 'repel':
+        // 비켜 가기. 둥근 방울 소리가 부드럽게 둘 올라간다.
+        this.tone('sine', hz('A5'), t, 0.01, 0.35, 0.1, hz('E6'));
+        this.tone('sine', hz('E6'), t + 0.11, 0.01, 0.4, 0.08, hz('A6'));
+        this.whoosh(t, 0.5, 0.06, 'bandpass', 800, 1600, 1.2);
+        break;
       case 'spray':
         // 치익. 방아쇠가 딸깍하고 물이 뿜어진다.
         this.tone('square', 1800, t, 0.001, 0.015, 0.03, 0, 4000);

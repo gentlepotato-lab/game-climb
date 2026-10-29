@@ -33,36 +33,34 @@
         </div>
         <p class="lead nw">함께 오를 친구를 골라 주세요.</p>
         <form id="start-form" class="start-form">
-          <button type="button" class="card card-mg" data-character="mongle" aria-pressed="true">
-            <span class="portrait pose-mg"></span>
+          <div class="card pick-card" id="pick-card" aria-live="polite">
+            <span class="portrait" id="pick-portrait"></span>
             <span class="card-body">
-              <span class="card-title"><strong class="nw">몽글이</strong><span class="nw">차분하고 도도한 절세미인</span></span>
+              <span class="card-title"><strong class="nw" id="pick-name"></strong><span class="nw" id="pick-tagline"></span></span>
               <span class="stats">
-                <span class="nw">오르기</span><span class="bar" style="--n: 3"></span>
-                <span class="nw">흔들기</span><span class="bar" style="--n: 5"></span>
-                <span class="nw">체력</span><span class="bar" style="--n: 4"></span>
+                <span class="nw">오르기</span><span class="bar" id="pick-climb"></span>
+                <span class="nw">흔들기</span><span class="bar" id="pick-swing"></span>
+                <span class="nw">체력</span><span class="bar" id="pick-hp"></span>
               </span>
-              <span class="card-note"><span class="nw"><b>쪼기</b> 1초 동안 먼지를 튕겨낸다.</span><span class="nw">흔들림이 작고 오르기가 느리다.</span></span>
+              <span class="card-note"><span><b id="pick-skill"></b> <span id="pick-skill-note"></span></span><span id="pick-trait"></span></span>
             </span>
-          </button>
-          <button type="button" class="card card-bo" data-character="bori" aria-pressed="false">
-            <span class="portrait pose-bo"></span>
-            <span class="card-body">
-              <span class="card-title"><strong class="nw">보리</strong><span class="nw">엇박자 천방지축</span></span>
-              <span class="stats">
-                <span class="nw">오르기</span><span class="bar" style="--n: 5"></span>
-                <span class="nw">흔들기</span><span class="bar" style="--n: 3"></span>
-                <span class="nw">체력</span><span class="bar" style="--n: 3"></span>
-              </span>
-              <span class="card-note"><span class="nw"><b>날리기</b> 1초 동안 먼지를 날려버린다.</span><span class="nw">씨앗을 끌어당기고 크게 흔들린다.</span></span>
-            </span>
-          </button>
+          </div>
+          <p class="hint nw">키보드: ←/→ 흔들기, 스페이스로 필살기</p>
+          <div class="perch" role="group" aria-label="친구 고르기">
+            <svg class="perch-branch" viewBox="0 0 400 40" preserveAspectRatio="none" aria-hidden="true">
+              <defs><linearGradient id="branchG" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#b98a5e" /><stop offset=".55" stop-color="#8d6140" /><stop offset="1" stop-color="#6a452c" /></linearGradient></defs>
+              <path d="M-10 14 C60 10 120 18 200 14 C280 10 340 17 410 12 L410 26 C340 31 280 24 200 28 C120 32 60 24 -10 28 Z" fill="url(#branchG)" />
+              <path d="M20 17 C70 15 110 19 160 17 M230 16 C280 14 320 19 380 15" stroke="#d2a77c" stroke-width="1.4" fill="none" opacity=".6" stroke-linecap="round" />
+              <path d="M300 26 C312 32 318 36 330 38" stroke="#7a5236" stroke-width="3" fill="none" stroke-linecap="round" />
+              <ellipse cx="334" cy="37" rx="7" ry="3.4" fill="#8fbf6a" transform="rotate(-18 334 37)" />
+            </svg>
+            <div class="perch-birds" id="perch-birds"></div>
+          </div>
           <label class="field">
             <span class="nw">닉네임</span>
             <input name="displayName" type="text" placeholder="몽보리" maxlength="20" autocomplete="nickname" required />
           </label>
-          <button id="start-button" class="primary nw" type="submit">몽글이와 시작</button>
-          <p class="hint nw">키보드: ←/→ 흔들기, 스페이스로 필살기</p>
+          <button id="start-button" class="primary nw" type="submit">보리와 시작</button>
         </form>
       </section>
 
