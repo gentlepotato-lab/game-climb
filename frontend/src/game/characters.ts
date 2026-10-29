@@ -103,7 +103,7 @@ export const CHARACTERS: Record<CharacterKey, Character> = {
     surpriseSpeed: 0.9,
     alertOnThreat: false,
     effortEvery: 3,
-    tagline: '엇박자 천방지축',
+    tagline: '열중하는 엇박자 천방지축',
     stats: { climb: 5, swing: 3, hp: 3 },
     skillNote: '1초 동안 먼지를 날려버린다.',
     trait: '씨앗을 끌어당기고 크게 흔들린다.'
@@ -192,7 +192,7 @@ export const CHARACTERS: Record<CharacterKey, Character> = {
     surpriseSpeed: 0,
     alertOnThreat: false,
     effortEvery: 0,
-    tagline: '온순하고 차분한 막둥이',
+    tagline: '온순하고 차분한 순둥순둥',
     stats: { climb: 3, swing: 4, hp: 4 },
     skillNote: '1초 동안 먼지가 막둥이를 피해서 지나간다.',
     trait: '흔들림이 고르고 무난하다.'

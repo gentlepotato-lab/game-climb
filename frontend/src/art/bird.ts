@@ -42,11 +42,14 @@ ${use(prefix + 'Cheek')}${use(prefix + 'Beak')}
 <g class="fx-wind" fill="none" stroke="#ffffff" stroke-linecap="round"><path class="wind wind1" d="M96 40 Q122 86 96 132" stroke-width="4"/><path class="wind wind2" d="M108 30 Q140 86 108 142" stroke-width="3"/><path class="wind wind3" d="M120 20 Q158 86 120 152" stroke-width="2.4"/><path class="wind wind1" d="M20 40 Q-6 86 20 132" stroke-width="4"/><path class="wind wind2" d="M8 30 Q-24 86 8 142" stroke-width="3"/></g>`;
 };
 
-// 고르는 화면의 정면 모습. 예쁜 짓은 styles.css의 .pose-mg 같은 이름이 맡는다.
+// 고르는 화면의 정면 모습. 예쁜 짓은 styles.css의 .pose-mg 같은 이름이 맡고, 하품은 .yawning이 맡는다.
+// 하품할 때는 눈을 감고 부리를 위아래로 벌린다. 원래 부리 위에 윗부리와 아랫부리를 따로 얹고,
+// 윗부리는 살짝 들리고 아랫부리는 내려가며 그 사이로 입 안과 혀가 보인다.
 export const posingBird = (prefix: BirdPrefix) => {
   const tongue = prefix === 'bo' ? `<g class="tongue">${use('fTongue')}</g>` : '';
   return `<svg viewBox="0 0 120 160" aria-hidden="true"><g class="tilt">
 ${use(prefix + 'FBody')}<g class="fwl">${use(prefix + 'FWL')}</g><g class="fwr">${use(prefix + 'FWR')}</g>
-${tongue}${use(prefix + 'FFace')}<g class="eyesO">${blink(prefix + 'FEyes', 'fBlink')}</g><g class="eyesH">${use('fHappy')}</g>
+${tongue}${use(prefix + 'FFace')}<g class="eyesO">${blink(prefix + 'FEyes', 'fBlink')}</g><g class="eyesH">${use('fHappy')}</g><g class="eyesY">${use('fBlink')}</g>
+<g class="yawn-beak"><path class="yb-mouth" d="M54.6 55 Q60 53 65.4 55 L63.6 67 Q60 70 56.4 67 Z" fill="#5b2735"/><ellipse class="yb-tongue" cx="60" cy="65" rx="3.2" ry="2.2" fill="#f08b9b"/><path class="yb-lower" d="M55.2 63 Q60 61.4 64.8 63 Q64 70 60 72.4 Q56 70 55.2 63 Z" fill="url(#k${prefix})"/><path class="yb-upper" d="M53 52 C53 46 67 46 67 52 C67 57.5 64.6 61.4 60 65 C55.4 61.4 53 57.5 53 52 Z" fill="url(#k${prefix})"/><path class="yb-upper" d="M57 51 C58.5 50 61.5 50 63 51" stroke="#ffffff" stroke-width="1.5" fill="none" opacity=".7" stroke-linecap="round"/></g>
 </g></svg>`;
 };

@@ -272,14 +272,14 @@ input {
   word-break: keep-all;
 }
 
-/* 설명이 길든 짧든 카드 높이가 같도록, 한 줄 소개는 한 줄로, 필살기와 성격은 세 줄 자리로 둔다. */
+/* 설명이 길든 짧든 카드 높이가 같도록, 한 줄 소개는 한 줄로, 필살기 딱지 아래 설명과 성격은 세 줄 자리로 둔다. */
 .pick-card .card-title span {
   overflow: hidden;
   text-overflow: ellipsis;
 }
 
 .pick-card .card-note {
-  height: 4.2em;
+  height: calc(1.5em + 4px + 4.2em);
 }
 
 /* 횃대. 다섯 친구가 일렬로 앉고, 고른 친구가 살짝 앞으로 나와 예쁜 짓을 한다. */
@@ -565,6 +565,103 @@ input {
 
 .blinkO {
   animation: blinkO 3.8s infinite;
+}
+
+/* 하품. 눈을 감고 부리를 위아래로 벌리며 고개를 살짝 젖히고, 날개를 쭉 편다. */
+.perch-pose .yawn-beak,
+.perch-pose .eyesY,
+.portrait .yawn-beak,
+.portrait .eyesY {
+  opacity: 0;
+}
+
+.yawning .yawn-beak,
+.yawning .eyesY {
+  animation: yawnShow 1.8s ease-in-out;
+}
+
+.yawning .eyesO {
+  animation: yawnHide 1.8s ease-in-out;
+}
+
+.yawning .perch-anim {
+  animation: yawnStretch 1.8s ease-in-out;
+  transform-origin: 50% 100%;
+}
+
+.yawning .tilt {
+  animation: yawnTilt 1.8s ease-in-out;
+}
+
+.yawning .fwl {
+  animation: yawnWingL 1.8s ease-in-out;
+}
+
+.yawning .fwr {
+  animation: yawnWingR 1.8s ease-in-out;
+}
+
+.yawn-beak .yb-upper,
+.yawn-beak .yb-lower,
+.yawn-beak .yb-tongue,
+.yawn-beak .yb-mouth {
+  transform-box: view-box;
+}
+
+.yawn-beak .yb-upper {
+  transform-origin: 60px 47px;
+}
+
+.yawn-beak .yb-mouth {
+  transform-origin: 60px 54px;
+}
+
+.yawning .yb-upper {
+  animation: yawnUpper 1.8s ease-in-out;
+}
+
+.yawning .yb-lower,
+.yawning .yb-tongue {
+  animation: yawnLower 1.8s ease-in-out;
+}
+
+.yawning .yb-mouth {
+  animation: yawnMouth 1.8s ease-in-out;
+}
+
+@keyframes yawnShow { 0%, 8%, 88%, 100% { opacity: 0; } 16%, 80% { opacity: 1; } }
+@keyframes yawnHide { 0%, 8%, 88%, 100% { opacity: 1; } 16%, 80% { opacity: 0; } }
+@keyframes yawnUpper { 0%, 14%, 86%, 100% { transform: none; } 40%, 66% { transform: rotate(-6deg) translateY(-1px); } }
+@keyframes yawnLower { 0%, 14%, 86%, 100% { transform: none; } 40%, 66% { transform: translateY(6px); } }
+@keyframes yawnMouth { 0%, 14%, 86%, 100% { transform: scaleY(0.4); } 40%, 66% { transform: scaleY(1.25); } }
+@keyframes yawnStretch { 0%, 100% { transform: none; } 40%, 66% { transform: scale(0.98, 1.05); } }
+@keyframes yawnTilt { 0%, 100% { transform: none; } 40%, 66% { transform: rotate(-7deg); } }
+@keyframes yawnWingL { 0%, 20%, 84%, 100% { transform: none; } 44%, 62% { transform: rotate(34deg); } }
+@keyframes yawnWingR { 0%, 20%, 84%, 100% { transform: none; } 44%, 62% { transform: rotate(-34deg); } }
+
+/* 한 줄 소개는 메모지처럼 살짝 기울여 붙인다. */
+.pick-card .memo {
+  align-self: flex-start;
+  margin: 2px 0 2px -2px;
+  padding: 2px 8px;
+  border-radius: 3px;
+  background: #fff3c4;
+  color: #4a3f2c;
+  box-shadow: 0 2px 4px rgba(60, 40, 20, 0.18);
+  transform: rotate(-1.5deg);
+}
+
+/* 필살기 이름은 네모난 딱지로, 설명은 그 아랫줄에 적는다. */
+.skill-tag {
+  align-self: flex-start;
+  margin-bottom: 2px;
+  padding: 1px 7px;
+  border: 1.5px solid var(--on);
+  border-radius: 4px;
+  color: var(--on);
+  font-size: 11px;
+  font-weight: 700;
+  line-height: 1.5;
 }
 
 .blinkC {
