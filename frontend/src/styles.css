@@ -871,7 +871,7 @@ input {
 .hud-hp {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 4px;
 }
 
 .hp-ring {
@@ -920,9 +920,7 @@ input {
 }
 
 .hp-num {
-  min-width: 28px;
   font-size: 16px;
-  text-align: right;
 }
 
 .hud-hp.low {
